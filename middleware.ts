@@ -1,73 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { PREVIEW_COOKIE_NAME, isDevelopment } from "@/lib/site-config";
+
+function isLaunched(): boolean {
+  return process.env.NEXT_PUBLIC_SITE_LAUNCHED === "true";
+}
+
+function hasPreviewAccess(request: NextRequest): boolean {
+  const secret = process.env.SITE_PREVIEW_SECRET;
+  if (!secret) {
+    return false;
+  }
+
+  const previewParam = request.nextUrl.searchParams.get("preview");
+  if (previewParam === secret) {
+    return true;
+  }
+
+  return request.cookies.get(PREVIEW_COOKIE_NAME)?.value === secret;
+}
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except for:
-     * 1. /api routes
-     * 2. /_next (Next.js internals)
-     * 3. /_static (inside /public)
-     * 4. all root files inside /public (e.g. /favicon.ico)
-     */
-    "/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)",
+    "/((?!_next/static|_next/image|favicon.ico|og-image.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
 
-export default async function middleware(req: NextRequest) {
-  const url = req.nextUrl;
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const launched = isLaunched();
+  const previewAccess = hasPreviewAccess(request);
+  const canAccessApp = launched || isDevelopment() || previewAccess;
 
-  // Get hostname of request (e.g. demo.vercel.pub, demo.localhost:3000)
-  let hostname = req.headers
-    .get("host")!
-    .replace(".localhost:3000", `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`);
-
-  // special case for Vercel preview deployment URLs
-  if (
-    hostname.includes("---") &&
-    hostname.endsWith(`.${process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENT_SUFFIX}`)
-  ) {
-    hostname = `${hostname.split("---")[0]}.${
-      process.env.NEXT_PUBLIC_ROOT_DOMAIN
-    }`;
+  if (previewAccess && request.nextUrl.searchParams.has("preview")) {
+    const url = request.nextUrl.clone();
+    url.searchParams.delete("preview");
+    const response = NextResponse.redirect(url);
+    response.cookies.set(PREVIEW_COOKIE_NAME, process.env.SITE_PREVIEW_SECRET!, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+    return response;
   }
 
-  const searchParams = req.nextUrl.searchParams.toString();
-  // Get the pathname of the request (e.g. /, /about, /blog/first-post)
-  const path = `${url.pathname}${
-    searchParams.length > 0 ? `?${searchParams}` : ""
-  }`;
+  if (pathname.startsWith("/api/health")) {
+    return NextResponse.next();
+  }
 
-  // rewrites for app pages
-  if (hostname == `app.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`) {
-    const session = await getToken({ req });
-    if (!session && path !== "/login") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    } else if (session && path == "/login") {
-      return NextResponse.redirect(new URL("/", req.url));
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/app")) {
+    if (canAccessApp) {
+      return NextResponse.next();
     }
-    return NextResponse.rewrite(
-      new URL(`/app${path === "/" ? "" : path}`, req.url),
-    );
+    return NextResponse.rewrite(new URL("/", request.url));
   }
 
-  // special case for `vercel.pub` domain
-  if (hostname === "vercel.pub") {
-    return NextResponse.redirect(
-      "https://vercel.com/blog/platforms-starter-kit",
-    );
+  if (canAccessApp) {
+    return NextResponse.next();
   }
 
-  // rewrite root application to `/home` folder
-  if (
-    hostname === "localhost:3000" ||
-    hostname === process.env.NEXT_PUBLIC_ROOT_DOMAIN
-  ) {
-    return NextResponse.rewrite(
-      new URL(`/home${path === "/" ? "" : path}`, req.url),
-    );
-  }
-
-  // rewrite everything else to `/[domain]/[slug] dynamic route
-  return NextResponse.rewrite(new URL(`/${hostname}${path}`, req.url));
+  return NextResponse.rewrite(new URL("/", request.url));
 }
