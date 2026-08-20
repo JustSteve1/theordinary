@@ -4,6 +4,15 @@ A minimal Next.js foundation with a coming-soon page for production and a gated 
 
 Built by [440Hz](https://440hz.uk).
 
+The public homepage is a **coming soon** page. Features are built under `/app` and stay gated until `NEXT_PUBLIC_SITE_LAUNCHED=true`.
+
+## Live
+
+- Production: [theordinary-steves-projects-af4cd3c7.vercel.app](https://theordinary-steves-projects-af4cd3c7.vercel.app)
+- Main branch: [theordinary-git-main-steves-projects-af4cd3c7.vercel.app](https://theordinary-git-main-steves-projects-af4cd3c7.vercel.app)
+
+`theordinary.vercel.app` belongs to a different Vercel project, so this app cannot claim that alias. Attach your own custom domain in the Vercel project settings when you have one.
+
 ## Stack
 
 - Next.js 15 (App Router)
