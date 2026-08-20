@@ -8,10 +8,10 @@ The public homepage is a **coming soon** page. Features are built under `/app` a
 
 ## Live
 
-- Production: [theordinary-steves-projects-af4cd3c7.vercel.app](https://theordinary-steves-projects-af4cd3c7.vercel.app)
-- Main branch: [theordinary-git-main-steves-projects-af4cd3c7.vercel.app](https://theordinary-git-main-steves-projects-af4cd3c7.vercel.app)
+- **https://theordinary-440hz.vercel.app**
+- Main branch: [theordinary-git-main-440hz.vercel.app](https://theordinary-git-main-440hz.vercel.app)
 
-`theordinary.vercel.app` belongs to a different Vercel project, so this app cannot claim that alias. Attach your own custom domain in the Vercel project settings when you have one.
+Merging to GitHub `main` automatically deploys production on the 440hz Vercel team. Attach a custom domain later in Vercel if you want a cleaner URL.
 
 ## Stack
 
