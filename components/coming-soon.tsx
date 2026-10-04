@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { siteConfig } from "@/lib/site-config";
 
 export function ComingSoon() {
@@ -9,7 +11,7 @@ export function ComingSoon() {
       />
 
       <div className="relative z-10 flex max-w-xl flex-col items-center text-center">
-        <p className="mb-6 text-xs font-medium uppercase tracking-[0.35em] text-stone-500">
+        <p className="mb-6 text-xs font-medium tracking-[0.35em] text-stone-500 uppercase">
           440Hz
         </p>
 
@@ -17,9 +19,12 @@ export function ComingSoon() {
           {siteConfig.name}
         </h1>
 
-        <p className="mt-6 text-lg leading-relaxed text-stone-400 sm:text-xl">
-          {siteConfig.tagline}
-        </p>
+        <Link
+          href="/signup"
+          className="mt-8 inline-flex items-center rounded-full bg-[#0a84ff] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0077ed]"
+        >
+          Get Started
+        </Link>
 
         <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
           <a
