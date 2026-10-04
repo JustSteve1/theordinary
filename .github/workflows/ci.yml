@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, "cursor/**"]
+    branches: [mvp-next]
   pull_request:
-    branches: [main]
+    branches: [mvp-next]
 
 jobs:
   ci:
@@ -29,7 +29,7 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_SITE_URL: https://example.com
+          NEXT_PUBLIC_SITE_URL: https://theordinary.club
           NEXT_PUBLIC_SITE_LAUNCHED: "false"
 
       - name: Audit dependencies

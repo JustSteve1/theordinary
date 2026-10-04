@@ -2,22 +2,25 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: "/"
+    target-branch: "mvp-next"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
-      next-js:
-        patterns:
-          - "next"
-          - "eslint-config-next"
-          - "@next/*"
-      tailwind:
-        patterns:
-          - "tailwindcss"
-          - "@tailwindcss/*"
-          - "prettier-plugin-tailwindcss"
+      production-deps:
+        dependency-type: production
+        update-types:
+          - "minor"
+          - "patch"
+      development-deps:
+        dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch: "mvp-next"
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 2
