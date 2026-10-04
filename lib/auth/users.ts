@@ -1,20 +1,7 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
+import { randomUUID } from "crypto";
 
-import { readJsonFile, writeJsonFile } from "@/lib/data-file";
-
-const USERS_FILE = "users.json";
-
-export type StoredUser = {
-  id: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-  createdAt: string;
-};
-
-type UserFile = {
-  users: StoredUser[];
-};
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { db, ready, StoreError } from "@/lib/db";
 
 export type PublicUser = {
   id: string;
@@ -22,75 +9,114 @@ export type PublicUser = {
   name: string;
 };
 
+type MemberRow = {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string;
+};
+
+let seeded: Promise<void> | undefined;
+
 export async function createUser(input: {
   name: string;
   email: string;
   password: string;
 }): Promise<PublicUser> {
-  const file = await readUsers();
+  await prepare();
   const email = input.email.trim().toLowerCase();
-  if (file.users.some((user) => user.email === email)) {
-    throw new Error("An account with that email already exists.");
+  const name = input.name.trim();
+  const id = randomUUID();
+
+  try {
+    await db()`
+      insert into members (id, email, name, password_hash)
+      values (${id}, ${email}, ${name}, ${hashPassword(input.password)})
+    `;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new StoreError("An account with that email already exists.");
+    }
+    throw error;
   }
 
-  const user: StoredUser = {
-    id: randomUUID(),
-    email,
-    name: input.name.trim(),
-    passwordHash: hashPassword(input.password),
-    createdAt: new Date().toISOString(),
-  };
-  file.users.push(user);
-  await writeJsonFile(USERS_FILE, file);
-  return { id: user.id, email: user.email, name: user.name };
+  return { id, email, name };
 }
 
 export async function authenticateUser(
   email: string,
   password: string,
 ): Promise<PublicUser | null> {
-  const file = await readUsers();
-  const user = file.users.find(
-    (entry) => entry.email === email.trim().toLowerCase(),
-  );
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  await prepare();
+  const rows = (await db()`
+    select id, email, name, password_hash
+    from members
+    where email = ${email.trim().toLowerCase()}
+    limit 1
+  `) as MemberRow[];
+  const user = rows[0];
+  if (!user || !verifyPassword(password, user.password_hash)) {
     return null;
   }
   return { id: user.id, email: user.email, name: user.name };
 }
 
 export async function findUserById(id: string): Promise<PublicUser | null> {
-  const file = await readUsers();
-  const user = file.users.find((entry) => entry.id === id);
+  await prepare();
+  const rows = (await db()`
+    select id, email, name, password_hash
+    from members
+    where id = ${id}
+    limit 1
+  `) as MemberRow[];
+  const user = rows[0];
   if (!user) {
     return null;
   }
   return { id: user.id, email: user.email, name: user.name };
 }
 
-async function readUsers(): Promise<UserFile> {
-  const file = await readJsonFile<UserFile>(USERS_FILE, { users: [] });
-  if (!file || !Array.isArray(file.users)) {
-    return { users: [] };
+async function prepare() {
+  await ready();
+  if (!seeded) {
+    seeded = seedFirstMember().catch((error) => {
+      seeded = undefined;
+      throw error;
+    });
   }
-  return file;
+  await seeded;
 }
 
-function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `scrypt:${salt}:${hash}`;
+async function seedFirstMember() {
+  const password = process.env.USER1_PASSWORD?.trim();
+  if (!password || password.length < 8) {
+    return;
+  }
+  const email = (process.env.USER1_EMAIL || "steve@440hz.uk")
+    .trim()
+    .toLowerCase();
+  const name = (process.env.USER1_NAME || "Steve Fortuin").trim();
+  if (!email || !name) {
+    return;
+  }
+
+  await db()`
+    insert into members (id, email, name, password_hash)
+    values (
+      ${randomUUID()},
+      ${email},
+      ${name},
+      ${hashPassword(password)}
+    )
+    on conflict (email) do nothing
+  `;
 }
 
-function verifyPassword(password: string, stored: string) {
-  const [scheme, salt, hash] = stored.split(":");
-  if (scheme !== "scrypt" || !salt || !hash) {
-    return false;
-  }
-  const actual = scryptSync(password, salt, 64);
-  const expected = Buffer.from(hash, "hex");
-  if (actual.length !== expected.length) {
-    return false;
-  }
-  return timingSafeEqual(actual, expected);
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
 }

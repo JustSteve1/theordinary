@@ -10,6 +10,7 @@ import {
   sessionSecret,
 } from "@/lib/auth/session";
 import { authenticateUser, createUser } from "@/lib/auth/users";
+import { StoreError } from "@/lib/db";
 
 export type AuthState = {
   error: string;
@@ -62,9 +63,7 @@ export async function signUp(
       return { error: sessionError };
     }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Could not create the account.";
-    return { error: message };
+    return { error: storeMessage(error, "Could not create the account.") };
   }
 
   redirect("/app");
@@ -82,7 +81,12 @@ export async function logIn(
     return { error: "Email or password is incorrect." };
   }
 
-  const user = await authenticateUser(email, passwordValue);
+  let user;
+  try {
+    user = await authenticateUser(email, passwordValue);
+  } catch (error) {
+    return { error: storeMessage(error, "Could not sign in.") };
+  }
   if (!user) {
     return { error: "Email or password is incorrect." };
   }
@@ -93,6 +97,14 @@ export async function logIn(
   }
 
   redirect("/app");
+}
+
+function storeMessage(error: unknown, fallback: string) {
+  if (error instanceof StoreError) {
+    return error.message;
+  }
+  console.error(error);
+  return fallback;
 }
 
 export async function signOut() {
