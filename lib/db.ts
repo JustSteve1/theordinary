@@ -21,6 +21,8 @@ create table if not exists members (
   created_at timestamptz not null default now()
 );
 
+alter table members add column if not exists timezone text not null default 'Europe/London';
+
 create table if not exists connections (
   user_id uuid not null references members (id) on delete cascade,
   provider text not null,

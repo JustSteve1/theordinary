@@ -7,6 +7,7 @@ export type PublicUser = {
   id: string;
   email: string;
   name: string;
+  timezone: string;
 };
 
 type MemberRow = {
@@ -14,7 +15,10 @@ type MemberRow = {
   email: string;
   name: string;
   password_hash: string;
+  timezone: string;
 };
+
+const DEFAULT_TIMEZONE = "Europe/London";
 
 let seeded: Promise<void> | undefined;
 
@@ -40,7 +44,7 @@ export async function createUser(input: {
     throw error;
   }
 
-  return { id, email, name };
+  return { id, email, name, timezone: DEFAULT_TIMEZONE };
 }
 
 export async function authenticateUser(
@@ -49,7 +53,7 @@ export async function authenticateUser(
 ): Promise<PublicUser | null> {
   await prepare();
   const rows = (await db()`
-    select id, email, name, password_hash
+    select id, email, name, password_hash, timezone
     from members
     where email = ${email.trim().toLowerCase()}
     limit 1
@@ -58,13 +62,13 @@ export async function authenticateUser(
   if (!user || !verifyPassword(password, user.password_hash)) {
     return null;
   }
-  return { id: user.id, email: user.email, name: user.name };
+  return toPublicUser(user);
 }
 
 export async function findUserById(id: string): Promise<PublicUser | null> {
   await prepare();
   const rows = (await db()`
-    select id, email, name, password_hash
+    select id, email, name, password_hash, timezone
     from members
     where id = ${id}
     limit 1
@@ -73,7 +77,21 @@ export async function findUserById(id: string): Promise<PublicUser | null> {
   if (!user) {
     return null;
   }
-  return { id: user.id, email: user.email, name: user.name };
+  return toPublicUser(user);
+}
+
+export async function rememberTimezone(userId: string, timezone: string) {
+  const next = timezone.trim();
+  if (!next) {
+    return;
+  }
+  await prepare();
+  await db()`
+    update members
+    set timezone = ${next}
+    where id = ${userId}
+      and timezone is distinct from ${next}
+  `;
 }
 
 async function prepare() {
@@ -110,6 +128,15 @@ async function seedFirstMember() {
     )
     on conflict (email) do nothing
   `;
+}
+
+function toPublicUser(user: MemberRow): PublicUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    timezone: user.timezone || DEFAULT_TIMEZONE,
+  };
 }
 
 function isUniqueViolation(error: unknown) {

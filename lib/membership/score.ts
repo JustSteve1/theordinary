@@ -22,10 +22,11 @@ const STRAIN_POINTS = 25;
 
 export function scoreMembership(input: {
   now: number;
+  timeZone: string;
   bee: BeeSnapshot;
   whoop: WhoopSnapshot;
 }): { points: number; tier: Tier; ledger: LedgerRow[] } {
-  const timeZone = input.bee.timezone || "Europe/London";
+  const timeZone = input.timeZone || "Europe/London";
   const week = weekDateKeys(input.now, timeZone);
   const today = dateKey(input.now, timeZone);
   const ledger: LedgerRow[] = [];
@@ -64,22 +65,32 @@ export function scoreMembership(input: {
   }
 
   if (input.whoop.status === "ok") {
-    pushWhoop(
+    pushWhoopDays(
       ledger,
       "Recovery",
       input.whoop.recovery,
       recoveryPoints,
       week,
       timeZone,
+      today,
     );
-    pushWhoop(ledger, "Sleep", input.whoop.sleep, sleepPoints, week, timeZone);
-    pushWhoop(
+    pushWhoopDays(
+      ledger,
+      "Sleep",
+      input.whoop.sleep,
+      sleepPoints,
+      week,
+      timeZone,
+      today,
+    );
+    pushWhoopDays(
       ledger,
       "Strain",
       input.whoop.strain,
       strainPoints,
       week,
       timeZone,
+      today,
     );
   }
 
@@ -100,32 +111,39 @@ export function tierFor(points: number): Tier {
   return "Member";
 }
 
-function pushWhoop(
+function pushWhoopDays(
   ledger: LedgerRow[],
   label: string,
-  score: WhoopScore | null,
+  scores: WhoopScore[],
   pointsFor: (score: WhoopScore) => number,
   week: Set<string>,
   timeZone: string,
+  today: string,
 ) {
-  if (!score) {
-    return;
-  }
-  const day = score.atMs === null ? null : dateKey(score.atMs, timeZone);
-  if (day && !week.has(day)) {
-    return;
-  }
-  const pending = score.state === "PENDING_SCORE";
-  const unscored = score.state === "UNSCORABLE" || score.state === "";
-  ledger.push({
-    label,
-    detail: pending
+  const seen = new Set<string>();
+  for (const score of scores) {
+    const day = score.atMs === null ? null : dateKey(score.atMs, timeZone);
+    if (day && !week.has(day)) {
+      continue;
+    }
+    const key = day ?? `${label}-undated`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    const pending = score.state === "PENDING_SCORE";
+    const unscored = score.state === "UNSCORABLE" || score.state === "";
+    const detail = pending
       ? `${label} is still scoring`
       : unscored
         ? `${label} could not be scored`
-        : score.detail,
-    points: pending || unscored ? 0 : pointsFor(score),
-  });
+        : score.detail;
+    ledger.push({
+      label,
+      detail: day && day !== today ? `${detail} · ${day}` : detail,
+      points: pending || unscored ? 0 : pointsFor(score),
+    });
+  }
 }
 
 function recoveryPoints(score: WhoopScore) {

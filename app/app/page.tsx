@@ -1,3 +1,4 @@
+import { rememberTimezone } from "@/lib/auth/users";
 import { loadBee } from "@/lib/integrations/bee/client";
 import { loadWhoop } from "@/lib/integrations/whoop/client";
 import { WEEK_GOAL, scoreMembership } from "@/lib/membership/score";
@@ -18,7 +19,17 @@ export default async function DashboardPage({
 
   const notice = (await searchParams).whoop;
   const [bee, whoop] = await Promise.all([loadBee(), loadWhoop(user.id)]);
-  const membership = scoreMembership({ now: Date.now(), bee, whoop });
+  const timeZone =
+    bee.status === "ok" && bee.timezone ? bee.timezone : user.timezone;
+  if (bee.status === "ok" && bee.timezone && bee.timezone !== user.timezone) {
+    await rememberTimezone(user.id, bee.timezone);
+  }
+  const membership = scoreMembership({
+    now: Date.now(),
+    timeZone,
+    bee,
+    whoop,
+  });
   const progress = Math.min(
     100,
     Math.round((membership.points / WEEK_GOAL) * 100),

@@ -3,7 +3,9 @@ import { randomBytes } from "crypto";
 import {
   deleteConnection,
   getConnection,
+  replaceWhoopRefresh,
   saveConnection,
+  withWhoopLock,
   type Connection,
 } from "@/lib/integrations/store";
 
@@ -22,9 +24,9 @@ export type WhoopConfig = {
 export type WhoopSnapshot = {
   status: "unconfigured" | "disconnected" | "error" | "ok";
   message: string | null;
-  recovery: WhoopScore | null;
-  sleep: WhoopScore | null;
-  strain: WhoopScore | null;
+  recovery: WhoopScore[];
+  sleep: WhoopScore[];
+  strain: WhoopScore[];
 };
 
 export type WhoopScore = {
@@ -33,8 +35,6 @@ export type WhoopScore = {
   value: number | null;
   detail: string;
 };
-
-const refreshInflight = new Map<string, Promise<Connection | null>>();
 
 export function whoopConfig(): WhoopConfig | null {
   const clientId = process.env.WHOOP_CLIENT_ID;
@@ -104,36 +104,21 @@ export async function disconnectWhoop(userId: string) {
 
 export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
   if (!whoopConfig()) {
-    return {
-      status: "unconfigured",
-      message: "WHOOP is not configured on this server.",
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return emptyWhoop(
+      "unconfigured",
+      "WHOOP is not configured on this server.",
+    );
   }
 
   const connection = await getConnection(userId, "whoop");
   if (!connection) {
-    return {
-      status: "disconnected",
-      message: null,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return emptyWhoop("disconnected", null);
   }
 
   try {
     const accessToken = await accessTokenFor(connection);
     if (!accessToken) {
-      return {
-        status: "disconnected",
-        message: "WHOOP needs to be connected again.",
-        recovery: null,
-        sleep: null,
-        strain: null,
-      };
+      return emptyWhoop("disconnected", "WHOOP needs to be connected again.");
     }
 
     const [recovery, sleep, cycles] = await Promise.all([
@@ -148,23 +133,34 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
     return {
       status: "ok",
       message: null,
-      recovery: mapRecovery(recovery.records?.[0]),
-      sleep: mapSleep(sleep.records?.[0]),
-      strain: mapStrain(cycles.records?.[0]),
+      recovery: mapRecords(recovery.records, mapRecovery),
+      sleep: mapRecords(sleep.records, mapSleep),
+      strain: mapRecords(cycles.records, mapStrain),
     };
   } catch (error) {
     const message =
       error instanceof Error && error.message.includes("429")
         ? "WHOOP is busy. Try again shortly."
         : "WHOOP could not be read.";
-    return {
-      status: "error",
-      message,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return emptyWhoop("error", message);
   }
+}
+
+function emptyWhoop(
+  status: WhoopSnapshot["status"],
+  message: string | null,
+): WhoopSnapshot {
+  return { status, message, recovery: [], sleep: [], strain: [] };
+}
+
+function mapRecords(
+  records: unknown[] | undefined,
+  map: (value: unknown) => WhoopScore | null,
+) {
+  return (records ?? []).flatMap((record) => {
+    const score = map(record);
+    return score ? [score] : [];
+  });
 }
 
 async function accessTokenFor(connection: Connection) {
@@ -172,17 +168,7 @@ async function accessTokenFor(connection: Connection) {
     return connection.accessToken;
   }
 
-  const existing = refreshInflight.get(connection.userId);
-  if (existing) {
-    const refreshed = await existing;
-    return refreshed?.accessToken ?? null;
-  }
-
-  const pending = refreshConnection(connection).finally(() => {
-    refreshInflight.delete(connection.userId);
-  });
-  refreshInflight.set(connection.userId, pending);
-  const refreshed = await pending;
+  const refreshed = await refreshConnection(connection);
   return refreshed?.accessToken ?? null;
 }
 
@@ -194,25 +180,43 @@ async function refreshConnection(
     return null;
   }
 
-  try {
-    const token = await requestToken(config, {
-      grant_type: "refresh_token",
-      refresh_token: connection.refreshToken,
-      scope: "offline",
-    });
-    const next: Connection = {
-      ...connection,
-      scopes: token.scope || connection.scopes,
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      expiresAt: Date.now() + token.expires_in * 1000,
-    };
-    await saveConnection(next);
-    return next;
-  } catch {
-    await deleteConnection(connection.userId, "whoop");
-    return null;
-  }
+  return withWhoopLock(connection.userId, async (sql) => {
+    const current = await getConnection(connection.userId, "whoop", sql);
+    if (!current) {
+      return null;
+    }
+    if (current.expiresAt > Date.now() + 60_000) {
+      return current;
+    }
+
+    try {
+      const token = await requestToken(config, {
+        grant_type: "refresh_token",
+        refresh_token: current.refreshToken,
+        scope: "offline",
+      });
+      const next: Connection = {
+        ...current,
+        scopes: token.scope || current.scopes,
+        accessToken: token.access_token,
+        refreshToken: token.refresh_token,
+        expiresAt: Date.now() + token.expires_in * 1000,
+      };
+      const saved = await replaceWhoopRefresh(next, current.refreshToken, sql);
+      return saved ?? getConnection(connection.userId, "whoop", sql);
+    } catch {
+      const latest = await getConnection(connection.userId, "whoop", sql);
+      if (
+        latest &&
+        latest.refreshToken !== current.refreshToken &&
+        latest.expiresAt > Date.now()
+      ) {
+        return latest;
+      }
+      await deleteConnection(connection.userId, "whoop", sql);
+      return null;
+    }
+  });
 }
 
 type TokenResponse = {
