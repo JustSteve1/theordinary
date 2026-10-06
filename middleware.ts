@@ -75,6 +75,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname.startsWith("/api/bee/snapshot")) {
+    return NextResponse.next();
+  }
+
   if (isMemberRoute(pathname)) {
     const secret = sessionSecret();
     const session = secret

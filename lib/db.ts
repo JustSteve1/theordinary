@@ -33,6 +33,20 @@ create table if not exists connections (
   expires_at bigint not null,
   primary key (user_id, provider)
 );
+
+create table if not exists bee_briefs (
+  user_id uuid primary key references members (id) on delete cascade,
+  body text not null,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists chat_messages (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  role text not null,
+  body text not null,
+  created_at timestamptz not null default now()
+);
 `;
 
 function databaseUrl() {

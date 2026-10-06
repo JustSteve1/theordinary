@@ -99,6 +99,16 @@ export default async function DashboardPage({
         </p>
       </Link>
 
+      <Link
+        href="/app/chat"
+        className="block rounded-[10px] border border-white/10 p-6"
+      >
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
+          Chat
+        </h2>
+        <p className="mt-4 text-[13px] text-stone-400">Ask about this week.</p>
+      </Link>
+
       <section className="rounded-[10px] border border-white/10 p-6">
         <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
           This week
