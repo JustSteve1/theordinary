@@ -24,14 +24,14 @@ export async function GET(request: Request) {
   });
 
   if (!code || !state || state !== expected || state.length !== 8) {
-    redirect("/app?whoop=error");
+    redirect("/app/connections?whoop=error");
   }
 
   try {
     await connectWhoop({ userId: user.id, code });
   } catch {
-    redirect("/app?whoop=error");
+    redirect("/app/connections?whoop=error");
   }
 
-  redirect("/app");
+  redirect("/app/connections");
 }

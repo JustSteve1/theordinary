@@ -16,7 +16,7 @@ export async function GET() {
 
   const config = whoopConfig();
   if (!config) {
-    redirect("/app?whoop=unconfigured");
+    redirect("/app/connections?whoop=unconfigured");
   }
 
   const state = createWhoopState();

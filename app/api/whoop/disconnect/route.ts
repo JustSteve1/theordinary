@@ -10,5 +10,5 @@ export async function POST() {
   }
 
   await disconnectWhoop(user.id);
-  redirect("/app");
+  redirect("/app/connections");
 }

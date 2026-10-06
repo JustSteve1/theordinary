@@ -1,5 +1,12 @@
+import Link from "next/link";
+
 import { rememberTimezone } from "@/lib/auth/users";
 import { loadBee } from "@/lib/integrations/bee/client";
+import {
+  beeConnection,
+  laterConnections,
+  whoopConnection,
+} from "@/lib/integrations/connections";
 import { loadWhoop } from "@/lib/integrations/whoop/client";
 import { WEEK_GOAL, scoreMembership } from "@/lib/membership/score";
 import { getCurrentUser } from "@/lib/users";
@@ -18,6 +25,9 @@ export default async function DashboardPage({
   }
 
   const notice = (await searchParams).whoop;
+  if (notice === "error" || notice === "unconfigured") {
+    redirect(`/app/connections?whoop=${notice}`);
+  }
   const [bee, whoop] = await Promise.all([loadBee(), loadWhoop(user.id)]);
   const timeZone =
     bee.status === "ok" && bee.timezone ? bee.timezone : user.timezone;
@@ -64,22 +74,30 @@ export default async function DashboardPage({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <WhoopControl
-          status={whoop.status}
-          message={whoop.message}
-          notice={notice}
-        />
-        {bee.status === "down" ? (
-          <p className="mt-4 text-[13px] leading-5 text-stone-400">
-            Bee is quiet. Start bee proxy on this machine.
-          </p>
-        ) : null}
-        {bee.status === "unauthorized" ? (
-          <p className="mt-4 text-[13px] leading-5 text-stone-400">
-            Bee needs you to run bee login on this machine.
-          </p>
-        ) : null}
       </section>
+
+      <Link
+        href="/app/connections"
+        className="block rounded-[10px] border border-white/10 p-6"
+      >
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
+          Connections
+        </h2>
+        <ul className="mt-4 divide-y divide-white/10">
+          {[whoopConnection(whoop), beeConnection(bee)].map((source) => (
+            <li
+              key={source.name}
+              className="flex items-baseline justify-between gap-4 py-3"
+            >
+              <p>{source.name}</p>
+              <p className="text-stone-400">{source.label}</p>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-[13px] text-stone-500">
+          Later: {laterConnections.map((source) => source.name).join(", ")}
+        </p>
+      </Link>
 
       <section className="rounded-[10px] border border-white/10 p-6">
         <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
@@ -137,52 +155,6 @@ export default async function DashboardPage({
             : "A reserved table, a car, and a quiet hour. Black opens at 100 points this week."}
         </p>
       </section>
-    </div>
-  );
-}
-
-function WhoopControl({
-  status,
-  message,
-  notice,
-}: {
-  status: "unconfigured" | "disconnected" | "error" | "ok";
-  message: string | null;
-  notice?: string;
-}) {
-  return (
-    <div className="mt-6 flex flex-wrap items-center gap-3">
-      {status === "ok" ? (
-        <form action="/api/whoop/disconnect" method="post">
-          <button type="submit" className="text-[#0a84ff]">
-            Disconnect WHOOP
-          </button>
-        </form>
-      ) : status === "unconfigured" ? (
-        <p className="text-[13px] text-stone-400">
-          {message ?? "WHOOP is not configured on this server."}
-        </p>
-      ) : (
-        <a href="/api/whoop/connect" className="text-[#0a84ff]">
-          Connect WHOOP
-        </a>
-      )}
-      {status === "error" && message ? (
-        <p className="text-[13px] text-stone-400">{message}</p>
-      ) : null}
-      {status === "disconnected" && message ? (
-        <p className="text-[13px] text-stone-400">{message}</p>
-      ) : null}
-      {notice === "error" ? (
-        <p className="text-[13px] text-stone-400">
-          WHOOP did not connect. Try again.
-        </p>
-      ) : null}
-      {notice === "unconfigured" ? (
-        <p className="text-[13px] text-stone-400">
-          Add WHOOP client credentials before connecting.
-        </p>
-      ) : null}
     </div>
   );
 }
