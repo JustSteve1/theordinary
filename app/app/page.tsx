@@ -81,7 +81,7 @@ export default async function DashboardPage({
         className="block rounded-[10px] border border-white/10 p-6"
       >
         <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
-          Connections
+          Integrations
         </h2>
         <ul className="mt-4 divide-y divide-white/10">
           {[whoopConnection(whoop), beeConnection(bee)].map((source) => (

@@ -1,5 +1,10 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
+import {
+  IntegrationSwitch,
+  WhoopSwitch,
+} from "@/components/integration-switch";
 import { rememberTimezone } from "@/lib/auth/users";
 import { loadBee } from "@/lib/integrations/bee/client";
 import {
@@ -29,96 +34,121 @@ export default async function ConnectionsPage({
     await rememberTimezone(user.id, bee.timezone);
   }
 
-  const sources = [whoopConnection(whoop), beeConnection(bee)];
+  const whoopSource = whoopConnection(whoop);
+  const beeSource = beeConnection(bee);
+  const whoopOn = whoop.status === "ok";
+  const beeOn = bee.status === "ok";
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-[10px] border border-white/10 bg-white/[0.03] p-6">
-        <p className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
-          Connections
-        </p>
-        <h1 className="mt-3 text-[28px] font-medium tracking-tight">Sources</h1>
-        <p className="mt-3 max-w-md text-[13px] leading-5 text-stone-400">
-          WHOOP and Bee score this week. The next sources will be configured
-          here too.
-        </p>
-        <Link href="/app" className="mt-6 inline-block text-[#0a84ff]">
-          Membership
-        </Link>
-      </section>
+    <div className="relative left-1/2 -my-8 min-h-[calc(100vh-3rem)] w-screen max-w-[100vw] -translate-x-1/2 bg-[#f2f2f7] px-6 py-8 text-[#1d1d1f]">
+      <div className="mx-auto max-w-xl">
+        <div className="flex items-center justify-between">
+          <Link href="/app" className="text-[13px] text-[#007aff]">
+            Membership
+          </Link>
+          <h1 className="text-[17px] font-semibold tracking-tight">
+            Integrations
+          </h1>
+          <span className="w-[72px]" />
+        </div>
 
-      {sources.map((source) => (
-        <section
-          key={source.name}
-          className="rounded-[10px] border border-white/10 p-6"
-        >
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-[22px] font-medium tracking-tight">
-              {source.name}
-            </h2>
-            <p className="text-[13px] text-stone-400">{source.label}</p>
-          </div>
-          <p className="mt-3 max-w-md text-[13px] leading-5 text-stone-300">
-            {source.detail}
-          </p>
-          {source.name === "WHOOP" ? (
-            <WhoopActions status={whoop.status} notice={notice} />
+        <Section label="Sources">
+          <Row
+            name="WHOOP"
+            detail={
+              whoopOn ? "Recovery, sleep, and strain" : whoopSource.detail
+            }
+            control={<WhoopSwitch status={whoop.status} />}
+          />
+          {notice === "error" ? (
+            <p className="px-4 pb-3 text-[13px] text-[#8e8e93]">
+              WHOOP did not connect. Try the switch again.
+            </p>
           ) : null}
-        </section>
-      ))}
+          <Row
+            name="Bee"
+            detail={
+              beeOn
+                ? "Conversations, daily summary, and todos"
+                : beeSource.detail
+            }
+            control={
+              <button
+                type="button"
+                disabled={!beeOn}
+                aria-disabled="true"
+                role="switch"
+                aria-checked={beeOn}
+                aria-label={
+                  beeOn
+                    ? "Bee is on. It is read from this machine."
+                    : "Bee is off. Start bee proxy on this machine."
+                }
+                className="cursor-default"
+              >
+                <IntegrationSwitch on={beeOn} disabled={!beeOn} />
+              </button>
+            }
+          />
+        </Section>
 
-      <section className="rounded-[10px] border border-white/10 p-6">
-        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
-          Later
-        </h2>
-        <ul className="mt-4 divide-y divide-white/10">
+        <Section label="Later">
           {laterConnections.map((source) => (
-            <li key={source.name} className="py-3">
-              <div className="flex items-baseline justify-between gap-4">
-                <p>{source.name}</p>
-                <p className="text-[13px] text-stone-500">Not yet</p>
-              </div>
-              <p className="mt-1 text-[13px] leading-5 text-stone-400">
-                {source.detail}
-              </p>
-            </li>
+            <Row
+              key={source.name}
+              name={source.name}
+              detail={
+                source.name === "Calendar"
+                  ? "Today’s brief. Not scoring yet."
+                  : "Included with WHOOP. Not separate yet."
+              }
+              control={
+                <button
+                  type="button"
+                  disabled
+                  role="switch"
+                  aria-checked={false}
+                  aria-label={`${source.name} is not available yet`}
+                  className="cursor-not-allowed"
+                >
+                  <IntegrationSwitch on={false} disabled />
+                </button>
+              }
+            />
           ))}
-        </ul>
-      </section>
+        </Section>
+      </div>
     </div>
   );
 }
 
-function WhoopActions({
-  status,
-  notice,
+function Section({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h2 className="px-4 text-[13px] text-[#6d6d72] uppercase">{label}</h2>
+      <div className="mt-2 overflow-hidden rounded-[10px] bg-white">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Row({
+  name,
+  detail,
+  control,
 }: {
-  status: "unconfigured" | "disconnected" | "error" | "ok";
-  notice?: string;
+  name: string;
+  detail: string;
+  control: ReactNode;
 }) {
   return (
-    <div className="mt-6 space-y-3">
-      {status === "ok" ? (
-        <form action="/api/whoop/disconnect" method="post">
-          <button type="submit" className="text-[#0a84ff]">
-            Disconnect
-          </button>
-        </form>
-      ) : status === "unconfigured" ? null : (
-        <a href="/api/whoop/connect" className="text-[#0a84ff]">
-          Connect
-        </a>
-      )}
-      {notice === "error" ? (
-        <p className="text-[13px] text-stone-400">
-          WHOOP did not connect. Try again.
-        </p>
-      ) : null}
-      {notice === "unconfigured" ? (
-        <p className="text-[13px] text-stone-400">
-          Add WHOOP client credentials before connecting.
-        </p>
-      ) : null}
+    <div className="flex items-center gap-4 border-b border-[#e5e5ea] px-4 py-3 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <p className="text-[17px] leading-5 font-medium">{name}</p>
+        <p className="mt-0.5 text-[13px] leading-5 text-[#8e8e93]">{detail}</p>
+      </div>
+      {control}
     </div>
   );
 }
