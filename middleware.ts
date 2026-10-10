@@ -36,7 +36,11 @@ function isAuthRoute(pathname: string) {
 }
 
 function isMemberRoute(pathname: string) {
-  return pathname.startsWith("/app") || pathname.startsWith("/api/whoop");
+  return (
+    pathname.startsWith("/app") ||
+    pathname.startsWith("/api/whoop") ||
+    pathname.startsWith("/api/skills/episodic-recall")
+  );
 }
 
 export async function middleware(request: NextRequest) {
@@ -76,6 +80,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/api/bee/snapshot")) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/api/skills/worker")) {
     return NextResponse.next();
   }
 

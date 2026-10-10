@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-09",
+  "window": "afternoon",
+  "raw_text_file": "examples/recall_raw.txt",
+  "facts": [
+    {"id": "r-01", "type": "person",   "text": "Sarah", "confidence": "certain"},
+    {"id": "r-02", "type": "activity", "text": "went through the budget", "confidence": "certain"},
+    {"id": "r-03", "type": "decision", "text": "we decided to cut travel", "confidence": "certain"},
+    {"id": "r-04", "type": "person",   "text": "Dan", "confidence": "certain"},
+    {"id": "r-05", "type": "place",    "text": "the coffee shop", "confidence": "certain"},
+    {"id": "r-06", "type": "topic",    "text": "his holiday", "confidence": "unsure"},
+    {"id": "r-07", "type": "topic",    "text": "the football", "confidence": "unsure"},
+    {"id": "r-08", "type": "object",   "text": "his bike", "confidence": "certain"}
+  ]
+}

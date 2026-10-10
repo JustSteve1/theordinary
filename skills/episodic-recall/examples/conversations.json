@@ -1,0 +1,37 @@
+[
+  {
+    "id": 6531525,
+    "start_time": 1791550800000,
+    "end_time": 1791553200000,
+    "state": "COMPLETED",
+    "short_summary": "Q3 budget review with Sarah"
+  },
+  {
+    "id": 6531601,
+    "start_time": 1791556800000,
+    "end_time": 1791558600000,
+    "state": "COMPLETED",
+    "short_summary": "Coffee with Dan, holiday plans"
+  },
+  {
+    "id": 6531640,
+    "start_time": 1791560700000,
+    "end_time": 1791560820000,
+    "state": "COMPLETED",
+    "short_summary": "Quick call"
+  },
+  {
+    "id": 6531700,
+    "start_time": 1791570600000,
+    "end_time": 1791572400000,
+    "state": "COMPLETED",
+    "short_summary": "Dinner conversation"
+  },
+  {
+    "id": 6531710,
+    "start_time": 1791576000000,
+    "end_time": 1791577200000,
+    "state": "PROCESSING",
+    "short_summary": "TV"
+  }
+]

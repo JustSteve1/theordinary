@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx,md}\"",
-    "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx,md}\""
+    "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx,md}\"",
+    "test": "tsx --test lib/skills/episodic-recall/oracle.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1146.0",
@@ -34,6 +35,7 @@
     "prettier": "^3.5.0",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.1.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.0"
   },
   "pnpm": {

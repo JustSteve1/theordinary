@@ -1,14 +1,16 @@
-import { timingSafeEqual } from "crypto";
-
 import { beeBriefText } from "@/lib/chat/brief";
 import { findMemberIdByEmail, saveBeeBrief } from "@/lib/chat/store";
 import type { BeeSnapshot } from "@/lib/integrations/bee/client";
+import { bearerAuthorized } from "@/lib/integrations/bearer";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const secret = process.env.BEE_SYNC_SECRET?.trim();
-  if (!secret || !authorized(request.headers.get("authorization"), secret)) {
+  if (
+    !secret ||
+    !bearerAuthorized(request.headers.get("authorization"), secret)
+  ) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -37,18 +39,6 @@ export async function POST(request: Request) {
 
   await saveBeeBrief(userId, beeBriefText(brief.bee));
   return Response.json({ ok: true });
-}
-
-function authorized(header: string | null, secret: string) {
-  const token = header?.startsWith("Bearer ")
-    ? header.slice("Bearer ".length)
-    : "";
-  const received = Buffer.from(token);
-  const expected = Buffer.from(secret);
-  if (received.length !== expected.length || received.length === 0) {
-    return false;
-  }
-  return timingSafeEqual(received, expected);
 }
 
 function parseBrief(

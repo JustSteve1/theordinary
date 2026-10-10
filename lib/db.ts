@@ -47,6 +47,72 @@ create table if not exists chat_messages (
   body text not null,
   created_at timestamptz not null default now()
 );
+
+create table if not exists skill_sessions (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  skill text not null,
+  phase text not null,
+  target_date date,
+  timezone text not null default 'Europe/London',
+  confounders jsonb,
+  window jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists skill_sessions_one_open
+  on skill_sessions (user_id, skill)
+  where phase in (
+    'consent',
+    'confounders',
+    'awaiting_capture',
+    'recall',
+    'followup_1',
+    'followup_2',
+    'feedback'
+  );
+
+create table if not exists skill_work (
+  session_id uuid primary key references skill_sessions (id) on delete cascade,
+  ground_truth jsonb,
+  recall_raw text not null default '',
+  reveal_items jsonb
+);
+
+create table if not exists skill_results (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  session_id uuid references skill_sessions (id) on delete set null,
+  skill text not null,
+  recorded_at timestamptz not null default now(),
+  target_date date,
+  window text,
+  conversation_ids jsonb not null default '[]'::jsonb,
+  aborted boolean not null default false,
+  composite double precision,
+  core_recall double precision,
+  detail_recall double precision,
+  intrusion_rate double precision,
+  unsure_rate double precision,
+  n_truth integer,
+  n_core integer,
+  n_recall integer,
+  per_type_recall jsonb,
+  confounders jsonb,
+  trend jsonb,
+  bee_fact text
+);
+
+create table if not exists skill_outbox (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  session_id uuid references skill_sessions (id) on delete set null,
+  skill text not null,
+  body text not null,
+  created_at timestamptz not null default now(),
+  acked_at timestamptz
+);
 `;
 
 function databaseUrl() {

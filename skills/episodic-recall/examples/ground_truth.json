@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-09",
+  "window": "afternoon",
+  "window_start": "2026-10-09T12:00:00+01:00",
+  "window_end": "2026-10-09T18:00:00+01:00",
+  "conversation_ids": [6531525, 6531601],
+  "facts": [
+    {"id": "gt-01", "type": "person",   "text": "Sarah Chen", "aliases": ["Sarah", "Sarah from finance"], "salience": "core", "conversation_id": 6531525, "approx_time": "14:00"},
+    {"id": "gt-02", "type": "activity", "text": "reviewed Q3 budget", "aliases": ["budget review", "went through the budget", "budget meeting"], "salience": "core", "conversation_id": 6531525},
+    {"id": "gt-03", "type": "decision", "text": "agreed to cut travel spend by 10 percent", "aliases": ["cut travel", "reduce travel budget"], "salience": "core", "conversation_id": 6531525},
+    {"id": "gt-04", "type": "topic",    "text": "new hire for marketing", "aliases": ["marketing hire", "hiring someone in marketing"], "salience": "detail", "conversation_id": 6531525},
+    {"id": "gt-05", "type": "quantity", "text": "three candidates shortlisted", "aliases": ["three candidates"], "salience": "detail", "conversation_id": 6531525},
+    {"id": "gt-06", "type": "place",    "text": "meeting room on second floor", "aliases": ["second floor", "upstairs meeting room"], "salience": "detail", "conversation_id": 6531525},
+    {"id": "gt-07", "type": "person",   "text": "Dan", "aliases": ["Daniel", "Dan from the gym"], "salience": "core", "conversation_id": 6531601, "approx_time": "15:40"},
+    {"id": "gt-08", "type": "place",    "text": "Costa on the high street", "aliases": ["Costa", "coffee shop", "cafe on the high street"], "salience": "core", "conversation_id": 6531601},
+    {"id": "gt-09", "type": "topic",    "text": "Dan's holiday to Portugal", "aliases": ["Portugal", "holiday plans", "Dan's holiday"], "salience": "core", "conversation_id": 6531601},
+    {"id": "gt-10", "type": "object",   "text": "Dan's new bike", "aliases": ["new bike", "bike"], "salience": "detail", "conversation_id": 6531601},
+    {"id": "gt-11", "type": "time",     "text": "coffee after the budget meeting", "aliases": ["after the meeting", "later in the afternoon"], "salience": "detail", "conversation_id": 6531601},
+    {"id": "gt-12", "type": "decision", "text": "Dan will send bike shop recommendation", "aliases": ["send recommendation", "bike shop"], "salience": "detail", "conversation_id": 6531601}
+  ]
+}
