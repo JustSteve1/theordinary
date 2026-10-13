@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AuthForm } from "@/components/auth-form";
-import { logIn } from "@/lib/auth/actions";
-import { getCurrentUser } from "@/lib/users";
+import { LoginForm } from "@/components/recall/login-form";
+import { RecallFrame } from "@/components/recall/ui";
+import { currentProfile } from "@/lib/recall/guard";
+import { pathForStep } from "@/lib/recall/paths";
 
-export const metadata: Metadata = {
-  title: "Log in",
-};
+export const metadata: Metadata = { title: "Log in" };
 
 export default async function LoginPage() {
-  if (await getCurrentUser()) {
-    redirect("/app");
+  const profile = await currentProfile();
+  if (profile?.emailVerifiedAt) {
+    redirect(pathForStep(profile.step));
   }
 
-  return <AuthForm mode="login" action={logIn} />;
+  return (
+    <RecallFrame>
+      <LoginForm />
+    </RecallFrame>
+  );
 }

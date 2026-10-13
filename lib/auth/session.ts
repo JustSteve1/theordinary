@@ -2,9 +2,16 @@ export const SESSION_COOKIE = "ordinary_session";
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
+export type SessionMeta = {
+  verified: boolean;
+  step: string;
+};
+
 type SessionPayload = {
   userId: string;
   exp: number;
+  verified?: boolean;
+  step?: string;
 };
 
 export function sessionSecret(): string | null {
@@ -28,11 +35,21 @@ export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
 export async function createSessionToken(
   userId: string,
   secret: string,
+  meta?: SessionMeta,
 ): Promise<string> {
   const payload: SessionPayload = {
     userId,
     exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
+    verified: meta?.verified,
+    step: meta?.step,
   };
+  return seal(payload, secret);
+}
+
+export async function seal(
+  payload: Record<string, unknown>,
+  secret: string,
+): Promise<string> {
   const encoded = bytesToBase64Url(
     new TextEncoder().encode(JSON.stringify(payload)),
   );
@@ -40,10 +57,10 @@ export async function createSessionToken(
   return `${encoded}.${signature}`;
 }
 
-export async function verifySessionToken(
+export async function openSealed<T>(
   token: string | undefined,
   secret: string,
-): Promise<{ userId: string } | null> {
+): Promise<T | null> {
   if (!token) {
     return null;
   }
@@ -61,20 +78,37 @@ export async function verifySessionToken(
   }
 
   try {
-    const payload = JSON.parse(
+    return JSON.parse(
       new TextDecoder().decode(base64UrlToBytes(encoded)),
-    ) as Partial<SessionPayload>;
-    if (
-      typeof payload.userId !== "string" ||
-      typeof payload.exp !== "number" ||
-      payload.exp < Date.now()
-    ) {
-      return null;
-    }
-    return { userId: payload.userId };
+    ) as T;
   } catch {
     return null;
   }
+}
+
+export async function verifySessionToken(
+  token: string | undefined,
+  secret: string,
+): Promise<{ userId: string; verified: boolean; step: string } | null> {
+  if (!token) {
+    return null;
+  }
+
+  const payload = await openSealed<Partial<SessionPayload>>(token, secret);
+  if (
+    !payload ||
+    typeof payload.userId !== "string" ||
+    typeof payload.exp !== "number" ||
+    payload.exp < Date.now()
+  ) {
+    return null;
+  }
+
+  return {
+    userId: payload.userId,
+    verified: payload.verified !== false,
+    step: typeof payload.step === "string" ? payload.step : "done",
+  };
 }
 
 async function hmacKey(secret: string, usages: KeyUsage[]) {

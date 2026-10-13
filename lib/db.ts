@@ -31,6 +31,64 @@ create table if not exists connections (
   expires_at bigint not null,
   primary key (user_id, provider)
 );
+
+alter table members add column if not exists email_verified_at timestamptz;
+alter table members add column if not exists onboarding_step text not null default 'privacy';
+alter table members add column if not exists onboarded_at timestamptz;
+alter table members add column if not exists failed_logins integer not null default 0;
+alter table members add column if not exists locked_until timestamptz;
+
+create table if not exists consents (
+  user_id uuid primary key references members (id) on delete cascade,
+  terms_version text,
+  terms_accepted_at timestamptz,
+  privacy_version text,
+  privacy_accepted_at timestamptz,
+  health_version text,
+  health_accepted_at timestamptz
+);
+
+create table if not exists recall_settings (
+  user_id uuid primary key references members (id) on delete cascade,
+  day_capture boolean not null default false,
+  day_capture_paused_until timestamptz,
+  mic_status text not null default 'unknown',
+  bee_enabled boolean not null default false,
+  reminder_enabled boolean not null default false,
+  reminder_time text not null default '10:00',
+  reminder_channel text not null default 'email'
+);
+
+create table if not exists recall_sessions (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  recorded_at timestamptz not null,
+  session_date date not null,
+  day_window text not null,
+  aborted boolean not null default false,
+  composite double precision,
+  core_recall double precision,
+  detail_recall double precision,
+  intrusion_rate double precision,
+  poor_sleep boolean not null default false,
+  unwell_or_alcohol boolean not null default false,
+  n_prior integer not null default 0,
+  n_prior_clean integer not null default 0,
+  baseline_mean double precision,
+  baseline_sd double precision,
+  z_score double precision,
+  trend_flag text not null
+);
+
+create table if not exists email_tokens (
+  token text primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  email text not null,
+  purpose text not null,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
 `;
 
 function databaseUrl() {

@@ -24,3 +24,22 @@ body {
 ::selection {
   background-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
+
+.recall {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.recall :focus-visible {
+  outline: 2px solid #0a84ff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recall *,
+  .recall *::before,
+  .recall *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

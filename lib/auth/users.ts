@@ -110,6 +110,16 @@ async function seedFirstMember() {
     )
     on conflict (email) do nothing
   `;
+
+  await db()`
+    update members
+    set
+      email_verified_at = coalesce(email_verified_at, now()),
+      onboarding_step = 'done',
+      onboarded_at = coalesce(onboarded_at, created_at)
+    where email = ${email}
+      and email_verified_at is null
+  `;
 }
 
 function isUniqueViolation(error: unknown) {

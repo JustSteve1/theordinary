@@ -5,6 +5,7 @@ import {
   sessionSecret,
   verifySessionToken,
 } from "@/lib/auth/session";
+import { pathForStep, welcomeAllowed } from "@/lib/recall/paths";
 import { PREVIEW_COOKIE_NAME, isDevelopment } from "@/lib/site-config";
 
 function isLaunched(): boolean {
@@ -31,12 +32,37 @@ export const config = {
   ],
 };
 
-function isAuthRoute(pathname: string) {
-  return pathname === "/signup" || pathname === "/login";
+function isPublicRoute(pathname: string) {
+  return (
+    pathname === "/" ||
+    pathname === "/signup" ||
+    pathname.startsWith("/signup/") ||
+    pathname === "/verify" ||
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/reset" ||
+    pathname === "/privacy" ||
+    pathname === "/terms"
+  );
+}
+
+function isRecallAppRoute(pathname: string) {
+  return (
+    pathname === "/home" ||
+    pathname.startsWith("/checkin") ||
+    pathname === "/dashboard" ||
+    pathname === "/settings"
+  );
 }
 
 function isMemberRoute(pathname: string) {
   return pathname.startsWith("/app") || pathname.startsWith("/api/whoop");
+}
+
+function continueWithPath(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set("x-recall-path", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export async function middleware(request: NextRequest) {
@@ -64,33 +90,64 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/api/health")) {
-    return NextResponse.next();
+    return continueWithPath(request);
   }
 
-  if (pathname === "/" || isAuthRoute(pathname)) {
-    return NextResponse.next();
+  if (isPublicRoute(pathname)) {
+    return continueWithPath(request);
   }
 
   if (pathname.startsWith("/api/whoop/callback")) {
-    return NextResponse.next();
+    return continueWithPath(request);
   }
 
-  if (isMemberRoute(pathname)) {
-    const secret = sessionSecret();
-    const session = secret
-      ? await verifySessionToken(
-          request.cookies.get(SESSION_COOKIE)?.value,
-          secret,
-        )
-      : null;
+  const secret = sessionSecret();
+  const session = secret
+    ? await verifySessionToken(
+        request.cookies.get(SESSION_COOKIE)?.value,
+        secret,
+      )
+    : null;
+
+  if (pathname.startsWith("/welcome") || isRecallAppRoute(pathname)) {
     if (!session) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    return NextResponse.next();
+    if (!session.verified) {
+      return NextResponse.redirect(new URL("/signup/verify", request.url));
+    }
+    if (pathname.startsWith("/welcome")) {
+      if (session.step === "done") {
+        return NextResponse.redirect(new URL("/home", request.url));
+      }
+      if (!welcomeAllowed(session.step, pathname)) {
+        return NextResponse.redirect(
+          new URL(pathForStep(session.step), request.url),
+        );
+      }
+      return continueWithPath(request);
+    }
+    if (session.step !== "done") {
+      return NextResponse.redirect(
+        new URL(pathForStep(session.step), request.url),
+      );
+    }
+    const response = continueWithPath(request);
+    if (pathname === "/home" || pathname === "/dashboard") {
+      response.cookies.set("recall_reveal", "", { path: "/", maxAge: 0 });
+    }
+    return response;
+  }
+
+  if (isMemberRoute(pathname)) {
+    if (!session) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return continueWithPath(request);
   }
 
   if (canAccessApp) {
-    return NextResponse.next();
+    return continueWithPath(request);
   }
 
   return NextResponse.rewrite(new URL("/", request.url));
