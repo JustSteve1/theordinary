@@ -22,7 +22,7 @@ export function bedrockConfig() {
   return {
     region: process.env.AWS_REGION?.trim() || "eu-west-2",
     modelId:
-      process.env.BEDROCK_MODEL_ID?.trim() || "eu.anthropic.claude-sonnet-5",
+      process.env.BEDROCK_MODEL_ID?.trim() || "amazon.nova-lite-v1:0",
     accessKeyId,
     secretAccessKey,
     sessionToken: process.env.AWS_SESSION_TOKEN?.trim() || undefined,
