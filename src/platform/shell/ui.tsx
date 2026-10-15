@@ -1,16 +1,16 @@
 import Link from "next/link";
 
 const buttonClass =
-  "inline-flex min-h-12 items-center justify-center rounded-[10px] px-4 text-[18px] leading-none font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a84ff] disabled:opacity-50";
+  "flex items-center text-[13px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a84ff] disabled:opacity-50";
+
+export const sectionLabel =
+  "text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase";
 
 export function buttonStyles(variant: "primary" | "secondary" | "quiet" = "primary") {
-  if (variant === "quiet") {
-    return `${buttonClass} text-[#0a84ff]`;
-  }
   if (variant === "secondary") {
-    return `${buttonClass} border border-white/15 bg-white/10 text-[#f5f5f4]`;
+    return `${buttonClass} text-stone-400`;
   }
-  return `${buttonClass} bg-[#0a84ff] text-[#0a0a0a]`;
+  return `${buttonClass} text-[#0a84ff]`;
 }
 
 export function Button({
@@ -46,29 +46,55 @@ export function ButtonLink({
   );
 }
 
+const nav = [
+  { href: "/map", label: "Journey" },
+  { href: "/home", label: "Home" },
+  { href: "/app", label: "Membership" },
+  { href: "/settings", label: "Settings" },
+];
+
 export function RecallFrame({
   children,
-  homeHref = "/",
+  homeHref = "/home",
   indicator,
-  aside,
+  account,
+  wide = false,
 }: {
   children: React.ReactNode;
   homeHref?: string;
   indicator?: React.ReactNode;
-  aside?: React.ReactNode;
+  account?: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
-    <div className="recall min-h-screen bg-[#0a0a0a] text-[18px] leading-[1.5] text-[#f5f5f4]">
-      <header className="flex min-h-16 items-center justify-between gap-3 border-b border-white/10 px-5">
-        <Link href={homeHref} className="font-medium tracking-tight">
-          Recall
-        </Link>
-        <div className="flex items-center gap-2">
-          {indicator}
-          {aside}
+    <div className="min-h-screen bg-[#0a0a0a] text-[13px] leading-5 text-stone-100">
+      <header className="border-b border-white/10">
+        <div className="flex h-12 items-center justify-between gap-4 px-4">
+          <Link href={homeHref} className="font-medium tracking-tight">
+            The Ordinary
+          </Link>
+          <div className="flex items-center gap-4">
+            {indicator}
+            {account ?? (
+              <Link href="/login" className="text-[#0a84ff]">
+                Log in
+              </Link>
+            )}
+          </div>
         </div>
+        <nav className="flex gap-4 overflow-x-auto px-4 pb-3">
+          {nav.map((item) => (
+            <Link key={item.href} href={item.href} className="shrink-0 text-[#0a84ff]">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </header>
-      <main className="mx-auto w-full max-w-xl px-5 py-8">{children}</main>
+      <main
+        className={`mx-auto w-full px-6 py-8 ${wide ? "max-w-6xl" : "max-w-2xl"}`}
+      >
+        {children}
+      </main>
     </div>
   );
 }
@@ -82,7 +108,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-[10px] border border-white/10 bg-white/[0.04] p-5 ${className}`}
+      className={`rounded-[10px] border border-white/10 p-6 ${className}`}
     >
       {children}
     </section>
@@ -117,7 +143,7 @@ export function FieldLabel({
   const errorId = `${name}-error`;
   return (
     <label className="block">
-      <span className="text-[#d6d3d1]">{label}</span>
+      <span className="text-stone-400">{label}</span>
       <span className="mt-1 flex gap-2">
         <input
           name={name}
@@ -128,12 +154,12 @@ export function FieldLabel({
           onBlur={onBlur}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-12 w-full rounded-[10px] border border-white/15 bg-transparent px-3 text-[18px] outline-none"
+          className="h-9 w-full rounded-[10px] border border-white/10 bg-transparent px-3 text-[13px] text-stone-100 outline-none"
         />
         {type === "password" && onTogglePassword ? (
           <button
             type="button"
-            className="min-h-12 shrink-0 rounded-[10px] px-3 text-[#0a84ff]"
+            className="shrink-0 px-2 text-[#0a84ff]"
             aria-pressed={showPassword}
             onClick={onTogglePassword}
           >
@@ -152,11 +178,11 @@ export function FieldLabel({
 
 export function FooterLinks() {
   return (
-    <footer className="mt-10 flex gap-4 text-[#d6d3d1]">
-      <Link href="/privacy" className="min-h-12 py-3 text-[#0a84ff]">
+    <footer className="mt-8 flex gap-4">
+      <Link href="/privacy" className="text-[#0a84ff]">
         Privacy policy
       </Link>
-      <Link href="/terms" className="min-h-12 py-3 text-[#0a84ff]">
+      <Link href="/terms" className="text-[#0a84ff]">
         Terms
       </Link>
     </footer>

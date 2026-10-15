@@ -19,7 +19,7 @@ export default async function BeePage() {
       <p className="mt-2">
         <Link
           href="/welcome/microphone"
-          className="inline-flex min-h-12 items-center text-[#0a84ff]"
+          className="text-[#0a84ff]"
         >
           Back
         </Link>

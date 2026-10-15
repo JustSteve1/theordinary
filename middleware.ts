@@ -43,7 +43,8 @@ function isPublicRoute(pathname: string) {
     pathname.startsWith("/login/") ||
     pathname === "/reset" ||
     pathname === "/privacy" ||
-    pathname === "/terms"
+    pathname === "/terms" ||
+    pathname === "/map"
   );
 }
 

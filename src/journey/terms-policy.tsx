@@ -10,7 +10,7 @@ export default function TermsDocumentPage() {
   return (
     <RecallFrame>
       <h1 className="text-[28px] font-medium tracking-tight">Terms</h1>
-      <p className="mt-2 text-[#d6d3d1]">Version {recallDefaults.termsVersion}</p>
+      <p className="mt-2 text-stone-400">Version {recallDefaults.termsVersion}</p>
       <Panel className="mt-4 space-y-3">
         <p>Recall is a personal wellness tool for a short daily check-in about yesterday.</p>
         <p>{copy.whatThisIsnt}</p>

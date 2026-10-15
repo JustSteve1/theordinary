@@ -37,7 +37,7 @@ export function SignupForm() {
         <h1 className="text-[28px] font-medium tracking-tight">
           Create your account
         </h1>
-        <p className="mt-2 text-[#d6d3d1]">
+        <p className="mt-2 text-stone-400">
           First name, email, and a password. You can leave whenever you want.
         </p>
         <div className="mt-6 space-y-4">

@@ -26,7 +26,7 @@ export function HealthForm() {
           />
           <span>{copy.healthConsent}</span>
         </label>
-        <p className="text-[#d6d3d1]">{copy.healthWithdraw}</p>
+        <p className="text-stone-400">{copy.healthWithdraw}</p>
         {state.error ? (
           <p className="text-[#ffb4ab]" role="alert">
             {state.error}

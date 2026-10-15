@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { CookieBanner } from "@/src/features/account/cookie-banner";
-import { ButtonLink, FooterLinks, Panel, RecallFrame } from "@/src/platform/shell/ui";
-import { copy } from "@/src/platform/recall/copy";
-import { pathForStep } from "@/src/platform/recall/paths";
 import { currentProfile } from "@/src/platform/recall/guard";
+import { copy } from "@/src/platform/recall/copy";
+import { AccountMenu } from "@/src/platform/shell/account-menu";
+import {
+  ButtonLink,
+  FooterLinks,
+  Panel,
+  RecallFrame,
+  sectionLabel,
+} from "@/src/platform/shell/ui";
 
 export const metadata: Metadata = {
   title: "Recall",
@@ -16,42 +21,32 @@ export default async function LandingPage() {
 
   return (
     <RecallFrame
-      aside={
-        profile?.emailVerifiedAt ? (
-          <Link
-            href={pathForStep(profile.step)}
-            className="inline-flex min-h-12 items-center text-[#0a84ff]"
-          >
-            Your home
-          </Link>
-        ) : (
-          <Link href="/login" className="inline-flex min-h-12 items-center text-[#0a84ff]">
-            Log in
-          </Link>
-        )
+      account={
+        profile?.emailVerifiedAt ? <AccountMenu name={profile.name} /> : undefined
       }
     >
-      <h1 className="text-[32px] font-medium tracking-tight">
+      <p className={sectionLabel}>The Ordinary</p>
+      <h1 className="mt-3 text-[28px] font-medium tracking-tight">
         A two-minute daily chat about your day, and a simple way to see how
         your memory for everyday things is doing over time.
       </h1>
       <div className="mt-8 space-y-4">
         <Panel>
-          <h2 className="text-[22px] font-medium">How it works</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-6">
+          <h2 className={sectionLabel}>How it works</h2>
+          <ol className="mt-3 list-decimal space-y-2 pl-6 text-stone-400">
             <li>Talk about yesterday.</li>
             <li>Recall compares it with what was captured.</li>
             <li>You see your own trend.</li>
           </ol>
         </Panel>
         <Panel>
-          <h2 className="text-[22px] font-medium">Privacy</h2>
-          <p className="mt-2 text-[#d6d3d1]">
+          <h2 className={sectionLabel}>Privacy</h2>
+          <p className="mt-3 text-[13px] leading-5 text-stone-400">
             A check-in listens while you talk, then keeps the score. Day capture
             is optional and off by default. The data is yours.
           </p>
         </Panel>
-        <p>{copy.whatThisIsnt}</p>
+        <p className="text-stone-400">{copy.whatThisIsnt}</p>
       </div>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <ButtonLink href="/signup">Sign up</ButtonLink>

@@ -17,7 +17,7 @@ export default async function MicrophonePage() {
       </div>
       <h1 className="mt-6 text-[28px] font-medium tracking-tight">Microphone</h1>
       <p className="mt-2">
-        <Link href="/welcome/privacy" className="inline-flex min-h-12 items-center text-[#0a84ff]">
+        <Link href="/welcome/privacy" className="text-[#0a84ff]">
           Back
         </Link>
       </p>

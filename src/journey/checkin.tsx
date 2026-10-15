@@ -31,13 +31,15 @@ export default async function CheckinPage() {
     profile.settings.micStatus === "skipped";
 
   return (
-    <div>
+    <div className="text-stone-400">
       <p>
-        <Link href="/home" className="inline-flex min-h-12 items-center text-[#0a84ff]">
+        <Link href="/home" className="text-[#0a84ff]">
           Back
         </Link>
       </p>
-      <h1 className="mt-2 text-[28px] font-medium tracking-tight">Before you start</h1>
+      <h1 className="mt-2 text-[28px] font-medium tracking-tight text-stone-100">
+        Before you start
+      </h1>
       <Panel className="mt-4">
         <ol className="list-decimal space-y-2 pl-6">
           <li>Find somewhere quiet.</li>

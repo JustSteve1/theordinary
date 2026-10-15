@@ -84,7 +84,7 @@ export function VerifyPanel({
         </Button>
       </form>
       <p>
-        <a href="mailto:" className="inline-flex min-h-12 items-center text-[#0a84ff]">
+        <a href="mailto:" className="text-[#0a84ff]">
           Open your email app
         </a>
       </p>

@@ -38,8 +38,8 @@ export default async function WrapUpPage({
   const showReview = session.trend.flag === "review_suggested";
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-[28px] font-medium tracking-tight">Wrap-up</h1>
+    <div className="space-y-4 text-stone-400">
+      <h1 className="text-[28px] font-medium tracking-tight text-stone-100">Wrap-up</h1>
       <Panel className="space-y-4">
         <p>{copy.wrapUp}</p>
         {cleanCount < recallDefaults.minBaseline ? (

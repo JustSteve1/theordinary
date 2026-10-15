@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TrendChart } from "@/src/features/trend/trend-chart";
-import { Panel } from "@/src/platform/shell/ui";
+import { Panel, sectionLabel } from "@/src/platform/shell/ui";
 import { copy } from "@/src/platform/recall/copy";
 import { recallDefaults } from "@/src/platform/recall/defaults";
 import {
@@ -32,30 +32,23 @@ export default async function DashboardPage({
   const latest = points.at(-1);
 
   return (
-    <div>
-      <h1 className="text-[28px] font-medium tracking-tight">Your trend</h1>
-      <p className="mt-2 text-[#d6d3d1]">{copy.baselineHint}</p>
+    <div className="text-stone-400">
+      <p className={sectionLabel}>Summary</p>
+      <h1 className="mt-3 text-[28px] font-medium tracking-tight text-stone-100">
+        Your trend
+      </h1>
+      <p className="mt-2">{copy.baselineHint}</p>
       {sample !== null ? (
         <p className="mt-3" role="status">
           This is a sample trend with {sample} check-ins.
         </p>
       ) : null}
-      <p className="mt-3 flex flex-wrap gap-3 text-[#0a84ff]">
-        <Link href="/dashboard" className="inline-flex min-h-12 items-center">
-          Your check-ins
-        </Link>
-        <Link href="/dashboard?fixture=0" className="inline-flex min-h-12 items-center">
-          Sample: none
-        </Link>
-        <Link href="/dashboard?fixture=3" className="inline-flex min-h-12 items-center">
-          Sample: 3
-        </Link>
-        <Link href="/dashboard?fixture=5" className="inline-flex min-h-12 items-center">
-          Sample: 5
-        </Link>
-        <Link href="/dashboard?fixture=12" className="inline-flex min-h-12 items-center">
-          Sample: 12
-        </Link>
+      <p className="mt-3 flex flex-wrap gap-4 text-[#0a84ff]">
+        <Link href="/dashboard">Your check-ins</Link>
+        <Link href="/dashboard?fixture=0">Sample: none</Link>
+        <Link href="/dashboard?fixture=3">Sample: 3</Link>
+        <Link href="/dashboard?fixture=5">Sample: 5</Link>
+        <Link href="/dashboard?fixture=12">Sample: 12</Link>
       </p>
       <Panel className="mt-4">
         {points.length === 0 ? (
@@ -76,7 +69,7 @@ export default async function DashboardPage({
               </p>
             ) : null}
             <TrendChart sessions={points} />
-            <p className="mt-4 text-[#d6d3d1]">{copy.chartExplainer}</p>
+            <p className="mt-4">{copy.chartExplainer}</p>
           </>
         )}
       </Panel>

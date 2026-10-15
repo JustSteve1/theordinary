@@ -1,6 +1,7 @@
 import { SettingsScreen } from "@/src/journey/settings-screen";
 import { loadBee } from "@/src/platform/integrations/bee";
 import { requireRecall } from "@/src/platform/recall/guard";
+import { sectionLabel } from "@/src/platform/shell/ui";
 
 export async function SettingsFlow({
   searchParams,
@@ -17,8 +18,11 @@ export async function SettingsFlow({
       : "Bee is quiet right now";
 
   return (
-    <div>
-      <h1 className="text-[28px] font-medium tracking-tight">Settings</h1>
+    <div className="text-stone-400">
+      <p className={sectionLabel}>Account</p>
+      <h1 className="mt-3 text-[28px] font-medium tracking-tight text-stone-100">
+        Settings
+      </h1>
       {notice === "password" ? (
         <p className="mt-3" role="status">
           Password saved.

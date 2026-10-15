@@ -45,7 +45,7 @@ export function ReminderForm({
       className="mt-4"
     >
       <Panel>
-        <h2 id="reminder-title" className="text-[22px] font-medium">
+        <h2 id="reminder-title" className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
           When would you like a nudge to check in?
         </h2>
         <form action={action} className="mt-4 space-y-3">
@@ -72,7 +72,7 @@ export function ReminderForm({
               className="mt-1 min-h-12 w-full rounded-[10px] border border-white/15 bg-transparent px-3"
             />
           </label>
-          <p className="text-[#d6d3d1]">
+          <p className="text-stone-400">
             {channel === "notification"
               ? "This browser will show a notification."
               : "We’ll use email if notifications are off."}

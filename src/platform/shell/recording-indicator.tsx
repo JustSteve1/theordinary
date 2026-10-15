@@ -20,7 +20,7 @@ export function RecordingIndicator({
       {interactive ? (
         <button
           type="button"
-          className="inline-flex min-h-12 items-center gap-2 rounded-[10px] px-3"
+          className="inline-flex items-center gap-2 text-[13px] text-stone-400"
           aria-expanded={open}
           onClick={() => setOpen((current) => !current)}
         >
@@ -28,7 +28,7 @@ export function RecordingIndicator({
           {label}
         </button>
       ) : (
-        <p className="inline-flex min-h-12 items-center gap-2 px-3">
+        <p className="inline-flex items-center gap-2 text-[13px] text-stone-400">
           <Marker />
           {label}
         </p>
@@ -39,12 +39,12 @@ export function RecordingIndicator({
       {open && interactive && pauseCapture && turnOffCapture ? (
         <div className="absolute right-0 z-10 mt-1 w-64 rounded-[10px] border border-white/10 bg-[#1c1c1e] p-3">
           <form action={pauseCapture}>
-            <button type="submit" className="min-h-12 w-full text-left text-[#0a84ff]">
+            <button type="submit" className="block py-2 text-left text-[#0a84ff]">
               Pause for 1 hour
             </button>
           </form>
           <form action={turnOffCapture}>
-            <button type="submit" className="min-h-12 w-full text-left text-[#0a84ff]">
+            <button type="submit" className="block py-2 text-left text-[#0a84ff]">
               Turn off
             </button>
           </form>

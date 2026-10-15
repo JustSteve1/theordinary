@@ -1,10 +1,10 @@
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { pauseCapture, turnOffCapture } from "@/src/features/settings/actions";
 import { dayCaptureLive } from "@/src/platform/recall/capture";
 import { currentProfile } from "@/src/platform/recall/guard";
+import { AccountMenu } from "@/src/platform/shell/account-menu";
 import { RecordingIndicator } from "@/src/platform/shell/recording-indicator";
 import { RecallFrame } from "@/src/platform/shell/ui";
 
@@ -43,16 +43,7 @@ export async function RecallLayout({
           ) : null}
         </>
       }
-      aside={
-        profile.step === "done" ? (
-          <Link
-            href="/settings"
-            className="inline-flex min-h-12 items-center text-[#0a84ff]"
-          >
-            Settings
-          </Link>
-        ) : null
-      }
+      account={<AccountMenu name={profile.name} />}
     >
       {children}
     </RecallFrame>

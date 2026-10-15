@@ -56,7 +56,7 @@ export function BeforeStart({
       ) : null}
       {scenarios.length > 0 ? (
         <div className="pt-4">
-          <p className="text-[#d6d3d1]">Preview a state</p>
+          <p className="text-stone-400">Preview a state</p>
           <ul className="mt-2 space-y-2">
             {scenarios.map((scenario) => (
               <li key={scenario}>

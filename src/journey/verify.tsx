@@ -40,7 +40,7 @@ export default async function CheckEmailPage({
             ? `We've sent a link to ${profile.email}. Open it on this device to carry on.`
             : "We've sent a link. Open it on this device to carry on."}
         </p>
-        <p className="mt-2 text-[#d6d3d1]">If you don’t see it, check spam.</p>
+        <p className="mt-2 text-stone-400">If you don’t see it, check spam.</p>
         <VerifyPanel initialRetry={retry} devLink={devLink} />
       </Panel>
     </RecallFrame>

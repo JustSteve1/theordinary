@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button, ButtonLink, Panel } from "@/src/platform/shell/ui";
+import { Button, ButtonLink, Panel, sectionLabel } from "@/src/platform/shell/ui";
 import { copy } from "@/src/platform/recall/copy";
 import type { HomeStateId } from "@/src/platform/recall/types";
 
@@ -22,7 +22,7 @@ function MicFix() {
         How to fix
       </Button>
       {open ? (
-        <p className="mt-3 text-[#d6d3d1]">
+        <p className="mt-3 text-stone-400">
           Allow the microphone for this site in the browser’s site settings,
           then come back to Settings and allow it again.
         </p>
@@ -49,9 +49,10 @@ export function HomeCard({
   const [reminderOpen, setReminderOpen] = useState(false);
 
   return (
-    <div>
-      <h1 className="text-[32px] font-medium tracking-tight">Hello {name}</h1>
-      <Panel className="mt-6">
+    <Panel className="bg-white/[0.03]">
+      <p className={sectionLabel}>Hello world</p>
+      <h1 className="mt-3 text-[28px] font-medium tracking-tight">Hello {name}</h1>
+      <div className="mt-4 space-y-4 text-[13px] leading-5 text-stone-400">
         {state === "needs_consent" ? consent : null}
         {state === "day1" ? (
           <>
@@ -100,15 +101,11 @@ export function HomeCard({
             </p>
           </>
         ) : null}
-      </Panel>
-      <p className="mt-4">
-        <ButtonLink href={launches.trend} variant="quiet">
-          Dashboard
-        </ButtonLink>
-        <ButtonLink href={launches.dashboard} variant="quiet">
-          Membership
-        </ButtonLink>
+      </div>
+      <p className="mt-6 flex gap-4">
+        <ButtonLink href={launches.trend}>Dashboard</ButtonLink>
+        <ButtonLink href={launches.dashboard}>Membership</ButtonLink>
       </p>
-    </div>
+    </Panel>
   );
 }

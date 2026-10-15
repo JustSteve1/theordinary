@@ -31,7 +31,7 @@ export function TermsForm() {
         label="I've read the Privacy policy"
         error={state.privacyError}
       />
-      <p className="text-[#d6d3d1]">{copy.healthNext}</p>
+      <p className="text-stone-400">{copy.healthNext}</p>
       {state.error ? (
         <p className="text-[#ffb4ab]" role="alert">
           {state.error}

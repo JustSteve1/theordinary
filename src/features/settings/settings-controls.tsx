@@ -38,7 +38,7 @@ export function SettingsControls({
   return (
     <div className="space-y-4">
       <Panel>
-        <h2 className="text-[22px] font-medium">Privacy and consent</h2>
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Privacy and consent</h2>
         <p className="mt-2">
           {profile.consent.healthAcceptedAt
             ? `Health-data consent given on ${new Date(profile.consent.healthAcceptedAt).toLocaleDateString("en-GB")}.`
@@ -60,7 +60,7 @@ export function SettingsControls({
         />
       </Panel>
       <Panel>
-        <h2 className="text-[22px] font-medium">Microphone and day capture</h2>
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Microphone and day capture</h2>
         <p className="mt-2">Microphone: {profile.settings.micStatus}</p>
         <MicUpdate />
         <form action={setDayCapture} className="mt-4">
@@ -79,7 +79,7 @@ export function SettingsControls({
         </form>
       </Panel>
       <Panel>
-        <h2 className="text-[22px] font-medium">Bee</h2>
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Bee</h2>
         <p className="mt-2">{beeLabel}</p>
         {profile.settings.beeEnabled ? (
           <form action={disconnectBee} className="mt-3">
@@ -92,7 +92,7 @@ export function SettingsControls({
         )}
       </Panel>
       <Panel>
-        <h2 className="text-[22px] font-medium">Reminders</h2>
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Reminders</h2>
         <p className="mt-2">
           {profile.settings.reminderEnabled
             ? `On at ${profile.settings.reminderTime}, by ${profile.settings.reminderChannel}.`
@@ -118,7 +118,7 @@ export function SettingsControls({
         </form>
       </Panel>
       <Panel>
-        <h2 className="text-[22px] font-medium">Account</h2>
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Account</h2>
         <p className="mt-2">{profile.email}</p>
         <PasswordForm />
         <form action={signOutRecall} className="mt-4">
@@ -159,7 +159,7 @@ function MicUpdate() {
   }
 
   return (
-    <form action={action} className="mt-3 space-y-3">
+    <form action={action} className="mt-3 flex flex-col items-start gap-3">
       <input type="hidden" name="mic_status" value={status} />
       <Button type="button" onClick={allow}>
         Allow microphone

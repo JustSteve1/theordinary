@@ -62,8 +62,8 @@ export function MicSetup() {
     <form action={action} className="space-y-4">
       <input type="hidden" name="mic_status" value={status} />
       <Panel>
-        <h2 className="text-[22px] font-medium">Voice check-ins</h2>
-        <p className="mt-2 text-[#d6d3d1]">
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Voice check-ins</h2>
+        <p className="mt-2 text-stone-400">
           Check-ins use the microphone. Your browser will ask before it turns
           the mic on.
         </p>
@@ -85,7 +85,7 @@ export function MicSetup() {
           </p>
         ) : null}
         {status === "denied" || status === "missing" ? (
-          <div className="mt-3 text-[#d6d3d1]">
+          <div className="mt-3 text-stone-400">
             <p>
               {status === "missing"
                 ? "No microphone was found."
@@ -108,13 +108,13 @@ export function MicSetup() {
         {status === "skipped" ? <p className="mt-2">Skipped for now.</p> : null}
       </Panel>
       <Panel>
-        <h2 className="text-[22px] font-medium">Day capture</h2>
-        <p className="mt-2 text-[#d6d3d1]">
+        <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Day capture</h2>
+        <p className="mt-2 text-stone-400">
           Recall can listen during the day so tomorrow’s check-in has something
           to compare with. You’ll always see an indicator while it’s on, and you
           can pause it any time.
         </p>
-        <p className="mt-2 text-[#d6d3d1]">
+        <p className="mt-2 text-stone-400">
           Other people’s words are only used to build your check-in and are
           never kept.
         </p>

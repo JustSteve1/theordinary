@@ -93,7 +93,7 @@ export function VoiceSession({ scenario }: { scenario: MockScenario }) {
           }`}
           aria-hidden
         >
-          <span className="text-center text-[18px]">{visual.label}</span>
+          <span className="text-center text-[13px] text-stone-400">{visual.label}</span>
         </div>
         <p className="mt-6" aria-live="polite">
           {declined ? copy.declined : error || visual.caption}
@@ -156,7 +156,7 @@ export function VoiceSession({ scenario }: { scenario: MockScenario }) {
           aria-labelledby="stop-title"
           className="rounded-[10px] border border-white/10 bg-[#1c1c1e] p-5"
         >
-          <h2 id="stop-title" className="text-[22px] font-medium">
+          <h2 id="stop-title" className="text-[13px] font-medium text-stone-100">
             End this check-in?
           </h2>
           <p className="mt-2">Nothing from today’s check-in will be saved.</p>

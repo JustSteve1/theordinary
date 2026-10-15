@@ -18,7 +18,7 @@ export default async function PrivacyStepPage() {
       <h1 className="mt-6 text-[28px] font-medium tracking-tight">
         Your data and privacy
       </h1>
-      <p className="mt-2 text-[#d6d3d1]">Only you can see this.</p>
+      <p className="mt-2 text-stone-400">Only you can see this.</p>
       <table className="mt-4 w-full text-left">
         <caption className="sr-only">What Recall stores</caption>
         <thead>

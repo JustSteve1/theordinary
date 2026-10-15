@@ -10,7 +10,7 @@ export default function PrivacyPolicyPage() {
   return (
     <RecallFrame>
       <h1 className="text-[28px] font-medium tracking-tight">Privacy policy</h1>
-      <p className="mt-2 text-[#d6d3d1]">Version {recallDefaults.privacyVersion}</p>
+      <p className="mt-2 text-stone-400">Version {recallDefaults.privacyVersion}</p>
       <Panel className="mt-4 space-y-3">
         <p>Recall stores your first name, email, and password so you can sign in.</p>
         <p>Check-in recordings are transcribed and then deleted within minutes. They are not kept.</p>
