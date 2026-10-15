@@ -1,3 +1,3 @@
 export const dynamic = "force-dynamic";
 
-export { default } from "@/src/journey/dashboard";
+export { default, metadata } from "@/src/journey/dashboard";

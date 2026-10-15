@@ -91,24 +91,17 @@ const branches: { title: string; detail: string; steps: Step[] }[] = [
   {
     title: "Check-in",
     detail: "The episodic recall task.",
-    steps: [
-      { id: "CI-2", label: "Before you start", route: "/checkin" },
-      { id: "CI-4", label: "Live check-in", route: "/checkin/live" },
-      { id: "CI-6", label: "Wrap-up", route: "/checkin/done" },
-    ],
+    steps: [{ id: "CI-2", label: "Hold to talk", route: "/home" }],
   },
   {
     title: "Summary",
     detail: "The score trend.",
-    steps: [{ id: "SM-2", label: "Trend", route: "/dashboard" }],
+    steps: [{ id: "SM-2", label: "Trend", route: "/app" }],
   },
   {
     title: "Membership",
     detail: "Status, integrations, and account.",
-    steps: [
-      { id: "Week", label: "Membership", route: "/app" },
-      { id: "Account", label: "Settings", route: "/settings" },
-    ],
+    steps: [{ id: "Week", label: "Dashboard", route: "/app" }],
   },
 ];
 

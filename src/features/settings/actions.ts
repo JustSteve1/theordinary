@@ -39,7 +39,7 @@ export async function updateMic(
   } catch (error) {
     return { error: message(error) };
   }
-  redirect("/settings");
+  redirect("/app");
 }
 
 export async function setReminderEnabled(formData: FormData) {
@@ -50,7 +50,7 @@ export async function setReminderEnabled(formData: FormData) {
     enabled,
     channel: profile.settings.reminderChannel,
   });
-  redirect("/settings");
+  redirect("/app");
 }
 
 export async function pauseCapture() {
@@ -68,13 +68,13 @@ export async function turnOffCapture() {
 export async function setDayCapture(formData: FormData) {
   const profile = await requireRecall({ min: "done", max: "done" });
   await updateDayCapture(profile.id, formData.get("day_capture") === "on");
-  redirect("/settings");
+  redirect("/app");
 }
 
 export async function disconnectBee() {
   const profile = await requireRecall({ min: "done", max: "done" });
   await saveBeeChoice(profile.id, false);
-  redirect("/settings");
+  redirect("/app");
 }
 
 export async function withdrawConsent() {
@@ -89,7 +89,7 @@ export async function withdrawConsent() {
 export async function removeCheckins() {
   const profile = await requireRecall({ min: "done", max: "done" });
   await deleteSessions(profile.id);
-  redirect("/settings");
+  redirect("/app");
 }
 
 export async function removeAccount() {
@@ -118,5 +118,5 @@ export async function changePassword(
   } catch (error) {
     return { error: message(error) };
   }
-  redirect("/settings?notice=password");
+  redirect("/app?notice=password");
 }

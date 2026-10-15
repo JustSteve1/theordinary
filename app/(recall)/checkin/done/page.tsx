@@ -1,1 +1,5 @@
-export { default, metadata } from "@/src/journey/checkin-done";
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/home");
+}

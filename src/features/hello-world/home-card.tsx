@@ -2,15 +2,19 @@
 
 import { useState } from "react";
 
-import { Button, ButtonLink, Panel, sectionLabel } from "@/src/platform/shell/ui";
+import { TalkSession } from "@/src/features/hello-world/talk-session";
+import { Button, ButtonLink, sectionLabel } from "@/src/platform/shell/ui";
 import { copy } from "@/src/platform/recall/copy";
+import type { ClientProbe } from "@/src/platform/recall/answer-key";
 import type { HomeStateId } from "@/src/platform/recall/types";
 
 export type LaunchMap = {
-  checkin: string;
-  trend: string;
   dashboard: string;
-  settings: string;
+};
+
+type TalkPayload = {
+  narrative: string;
+  answers: { id: string; answer: string }[];
 };
 
 function MicFix() {
@@ -24,7 +28,7 @@ function MicFix() {
       {open ? (
         <p className="mt-3 text-stone-400">
           Allow the microphone for this site in the browser’s site settings,
-          then come back to Settings and allow it again.
+          then come back and hold to talk.
         </p>
       ) : null}
     </>
@@ -34,78 +38,36 @@ function MicFix() {
 export function HomeCard({
   state,
   name,
-  quietBee,
+  probes,
   launches,
   consent,
-  reminder,
+  finishTalk,
 }: {
   state: HomeStateId;
   name: string;
-  quietBee: boolean;
+  probes: ClientProbe[];
   launches: LaunchMap;
   consent: React.ReactNode;
-  reminder: (props: { open: boolean; onClose: () => void }) => React.ReactNode;
+  finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
 }) {
-  const [reminderOpen, setReminderOpen] = useState(false);
+  const canTalk =
+    state !== "needs_consent" && state !== "mic_blocked" && state !== "done_today";
 
   return (
-    <Panel className="bg-white/[0.03]">
+    <div className="flex min-h-[70vh] flex-col text-stone-400">
       <p className={sectionLabel}>Hello world</p>
-      <h1 className="mt-3 text-[28px] font-medium tracking-tight">Hello {name}</h1>
-      <div className="mt-4 space-y-4 text-[13px] leading-5 text-stone-400">
+      <h1 className="mt-3 text-[28px] font-medium tracking-tight text-stone-100">
+        Hello {name}
+      </h1>
+      <div className="mt-6 flex flex-1 flex-col items-center justify-center">
         {state === "needs_consent" ? consent : null}
-        {state === "day1" ? (
-          <>
-            <p>{copy.day1}</p>
-            <Button type="button" className="mt-4" onClick={() => setReminderOpen(true)}>
-              Set a reminder
-            </Button>
-            {reminder({ open: reminderOpen, onClose: () => setReminderOpen(false) })}
-          </>
-        ) : null}
-        {state === "ready" ? (
-          <>
-            <p>{copy.ready}</p>
-            <div className="mt-4">
-              <ButtonLink href={launches.checkin}>Start check-in</ButtonLink>
-            </div>
-          </>
-        ) : null}
-        {state === "not_enough_data" ? (
-          <>
-            <p>{copy.notEnough}</p>
-            {quietBee ? <p className="mt-2">Bee is quiet right now.</p> : null}
-            <p className="mt-4">
-              <ButtonLink href={launches.settings} variant="secondary">
-                Go to Settings
-              </ButtonLink>
-            </p>
-          </>
-        ) : null}
-        {state === "no_source" ? (
-          <>
-            <p>{copy.noSource}</p>
-            <p className="mt-4">
-              <ButtonLink href={launches.settings}>Go to Settings</ButtonLink>
-            </p>
-          </>
-        ) : null}
         {state === "mic_blocked" ? <MicFix /> : null}
-        {state === "done_today" ? (
-          <>
-            <p>{copy.doneToday}</p>
-            <p className="mt-4">
-              <ButtonLink href={launches.trend} variant="secondary">
-                View dashboard
-              </ButtonLink>
-            </p>
-          </>
-        ) : null}
+        {state === "done_today" ? <p className="text-center">{copy.doneToday}</p> : null}
+        {canTalk ? <TalkSession probes={probes} finishTalk={finishTalk} /> : null}
       </div>
-      <p className="mt-6 flex gap-4">
-        <ButtonLink href={launches.trend}>Dashboard</ButtonLink>
-        <ButtonLink href={launches.dashboard}>Membership</ButtonLink>
+      <p className="mt-6">
+        <ButtonLink href={launches.dashboard}>Dashboard</ButtonLink>
       </p>
-    </Panel>
+    </div>
   );
 }

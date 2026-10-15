@@ -102,7 +102,7 @@ export async function connectBee(): Promise<FormState> {
     }
     return { error: message(error) };
   }
-  redirect(alreadyDone ? "/settings" : "/home");
+  redirect(alreadyDone ? "/app" : "/home");
 }
 
 export async function finishBee(

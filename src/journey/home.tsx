@@ -1,3 +1,4 @@
+import { finishTalk } from "@/src/features/check-in/actions";
 import { loadHomeContext } from "@/src/features/hello-world";
 import { HomeComposer } from "@/src/journey/home-composer";
 import { homeLaunch } from "@/src/journey/launch";
@@ -17,7 +18,7 @@ export async function HomeScreen({
 }) {
   const profile = await requireRecall({ min: "done", max: "done" });
   const notice = notices[(await searchParams).notice ?? ""] ?? "";
-  const { state, quietBee } = await loadHomeContext(profile);
+  const { state, probes } = await loadHomeContext(profile);
 
   return (
     <div>
@@ -29,8 +30,9 @@ export async function HomeScreen({
       <HomeComposer
         state={state}
         name={profile.name.split(" ")[0] || profile.name}
-        quietBee={quietBee}
+        probes={probes}
         launches={homeLaunch}
+        finishTalk={finishTalk}
       />
     </div>
   );

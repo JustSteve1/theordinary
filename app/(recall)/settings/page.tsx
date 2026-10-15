@@ -1,3 +1,5 @@
-export { SettingsFlow as default } from "@/src/journey/settings";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Settings" };
+export default function Page() {
+  redirect("/app");
+}

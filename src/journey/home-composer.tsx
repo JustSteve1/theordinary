@@ -2,28 +2,35 @@
 
 import { HomeCard, type LaunchMap } from "@/src/features/hello-world/home-card";
 import { HealthForm } from "@/src/features/onboarding/health-form";
-import { ReminderForm } from "@/src/features/onboarding/reminder-form";
+import type { ClientProbe } from "@/src/platform/recall/answer-key";
 import type { HomeStateId } from "@/src/platform/recall/types";
+
+type TalkPayload = {
+  narrative: string;
+  answers: { id: string; answer: string }[];
+};
 
 export function HomeComposer({
   state,
   name,
-  quietBee,
+  probes,
   launches,
+  finishTalk,
 }: {
   state: HomeStateId;
   name: string;
-  quietBee: boolean;
+  probes: ClientProbe[];
   launches: LaunchMap;
+  finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
 }) {
   return (
     <HomeCard
       state={state}
       name={name}
-      quietBee={quietBee}
+      probes={probes}
       launches={launches}
       consent={<HealthForm />}
-      reminder={(props) => <ReminderForm {...props} />}
+      finishTalk={finishTalk}
     />
   );
 }

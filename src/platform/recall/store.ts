@@ -499,6 +499,46 @@ export async function insertSession(userId: string, session: SessionRecord) {
   `;
 }
 
+async function ensureTalks() {
+  await ready();
+  await db()`
+    create table if not exists recall_talks (
+      session_id uuid primary key references recall_sessions (id) on delete cascade,
+      user_id uuid not null references members (id) on delete cascade,
+      narrative text not null,
+      answers jsonb not null,
+      created_at timestamptz not null default now()
+    )
+  `;
+}
+
+export async function listTalkNarratives(userId: string) {
+  await ensureTalks();
+  const rows = await db()`
+    select session_id, narrative
+    from recall_talks
+    where user_id = ${userId}
+    order by created_at asc
+  `;
+  return rows.map((row) => ({
+    id: String(row.session_id),
+    narrative: String(row.narrative ?? ""),
+  }));
+}
+
+export async function insertTalk(
+  userId: string,
+  sessionId: string,
+  narrative: string,
+  answers: { id: string; question: string; answer: string }[],
+) {
+  await ensureTalks();
+  await db()`
+    insert into recall_talks (session_id, user_id, narrative, answers)
+    values (${sessionId}, ${userId}, ${narrative}, ${db().json(answers)})
+  `;
+}
+
 export async function deleteSessions(userId: string) {
   await ready();
   await db()`delete from recall_sessions where user_id = ${userId}`;

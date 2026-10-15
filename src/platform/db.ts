@@ -80,6 +80,14 @@ create table if not exists recall_sessions (
   trend_flag text not null
 );
 
+create table if not exists recall_talks (
+  session_id uuid primary key references recall_sessions (id) on delete cascade,
+  user_id uuid not null references members (id) on delete cascade,
+  narrative text not null,
+  answers jsonb not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists email_tokens (
   token text primary key,
   user_id uuid not null references members (id) on delete cascade,

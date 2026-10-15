@@ -133,11 +133,6 @@ export function SettingsControls({
           cancelLabel="Keep account"
           action={removeAccount}
         />
-        <p className="mt-4">
-          <a href="/app" className="text-[#0a84ff]">
-            Membership
-          </a>
-        </p>
       </Panel>
     </div>
   );
