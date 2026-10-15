@@ -35,6 +35,7 @@ export const config = {
 function isPublicRoute(pathname: string) {
   return (
     pathname === "/" ||
+    pathname === "/dev/hello" ||
     pathname === "/signup" ||
     pathname.startsWith("/signup/") ||
     pathname === "/verify" ||
@@ -91,6 +92,10 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/api/health")) {
     return continueWithPath(request);
+  }
+
+  if (isDevelopment() && pathname === "/") {
+    return NextResponse.redirect(new URL("/dev/hello", request.url));
   }
 
   if (isPublicRoute(pathname)) {

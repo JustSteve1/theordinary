@@ -64,11 +64,11 @@ export async function authenticateUser(
 export async function findUserById(id: string): Promise<PublicUser | null> {
   await prepare();
   const rows = (await db()`
-    select id, email, name, password_hash
+    select id, email, name
     from members
     where id = ${id}
     limit 1
-  `) as MemberRow[];
+  `) as Pick<MemberRow, "id" | "email" | "name">[];
   const user = rows[0];
   if (!user) {
     return null;
