@@ -4,9 +4,9 @@ import {
   SESSION_COOKIE,
   sessionSecret,
   verifySessionToken,
-} from "@/lib/auth/session";
-import { pathForStep, welcomeAllowed } from "@/lib/recall/paths";
-import { PREVIEW_COOKIE_NAME, isDevelopment } from "@/lib/site-config";
+} from "@/src/platform/session";
+import { pathForStep, welcomeAllowed } from "@/src/platform/recall/paths";
+import { PREVIEW_COOKIE_NAME, isDevelopment } from "@/src/platform/site";
 
 function isLaunched(): boolean {
   return process.env.NEXT_PUBLIC_SITE_LAUNCHED === "true";

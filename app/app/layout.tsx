@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { signOut } from "@/lib/auth/actions";
-import { getCurrentUser } from "@/lib/users";
+import { signOut } from "@/src/platform/auth-actions";
+import { getCurrentUser } from "@/src/platform/current-user";
 
 export default async function AppLayout({
   children,

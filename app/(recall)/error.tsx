@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/recall/ui";
+import { Button } from "@/src/platform/shell/ui";
 
 export default function RecallError({
   reset,

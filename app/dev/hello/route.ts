@@ -5,9 +5,9 @@ import {
   createSessionToken,
   sessionCookieOptions,
   sessionSecret,
-} from "@/lib/auth/session";
-import { findAuthByEmail, getRecallProfile } from "@/lib/recall/store";
-import { isDevelopment } from "@/lib/site-config";
+} from "@/src/platform/session";
+import { findAuthByEmail, getRecallProfile } from "@/src/platform/recall/store";
+import { isDevelopment } from "@/src/platform/site";
 
 /** Local account the MVP 1.1 work opens on. */
 const HELLO_EMAIL = "steve@440hz.uk";

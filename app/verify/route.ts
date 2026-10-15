@@ -5,15 +5,15 @@ import {
   createSessionToken,
   sessionCookieOptions,
   sessionSecret,
-} from "@/lib/auth/session";
-import { writePending } from "@/lib/recall/cookies";
-import { pathForStep } from "@/lib/recall/paths";
+} from "@/src/platform/session";
+import { writePending } from "@/src/platform/recall/cookies";
+import { pathForStep } from "@/src/platform/recall/paths";
 import {
   consumeEmailToken,
   findAuthByEmail,
   getRecallProfile,
   markEmailVerified,
-} from "@/lib/recall/store";
+} from "@/src/platform/recall/store";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

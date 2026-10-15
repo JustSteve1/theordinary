@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { siteConfig } from "@/lib/site-config";
+import { siteConfig } from "@/src/platform/site";
 
 export function ComingSoon() {
   return (

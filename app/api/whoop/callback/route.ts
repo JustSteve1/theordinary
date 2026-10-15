@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { connectWhoop } from "@/lib/integrations/whoop/client";
-import { getCurrentUser } from "@/lib/users";
+import { connectWhoop } from "@/src/platform/integrations/whoop";
+import { getCurrentUser } from "@/src/platform/current-user";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();

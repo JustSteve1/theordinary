@@ -5,8 +5,8 @@ import {
   createWhoopState,
   whoopAuthorizeUrl,
   whoopConfig,
-} from "@/lib/integrations/whoop/client";
-import { getCurrentUser } from "@/lib/users";
+} from "@/src/platform/integrations/whoop";
+import { getCurrentUser } from "@/src/platform/current-user";
 
 export async function GET() {
   const user = await getCurrentUser();

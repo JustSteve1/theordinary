@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { disconnectWhoop } from "@/lib/integrations/whoop/client";
-import { getCurrentUser } from "@/lib/users";
+import { disconnectWhoop } from "@/src/platform/integrations/whoop";
+import { getCurrentUser } from "@/src/platform/current-user";
 
 export async function POST() {
   const user = await getCurrentUser();

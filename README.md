@@ -21,7 +21,7 @@ Journey source, in the order to read it:
 | [docs/recall/content-and-guardrails.md](docs/recall/content-and-guardrails.md) | Tone, forbidden words, consent, accessibility |
 | [docs/recall/open-decisions.md](docs/recall/open-decisions.md) | Defaults D1–D13 |
 
-When the screen spec and the journey map disagree, the map wins and the conflict stays listed in the open decisions. Build with the default. Each default lives in [`lib/recall/defaults.ts`](lib/recall/defaults.ts) so it can change without a redesign.
+When the screen spec and the journey map disagree, the map wins and the conflict stays listed in the open decisions. Build with the default. Each default lives in [`src/platform/recall/defaults.ts`](src/platform/recall/defaults.ts) so it can change without a redesign.
 
 ## Visual language
 
