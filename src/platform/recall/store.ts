@@ -512,10 +512,16 @@ async function ensureTalks() {
   `;
 }
 
-export async function listTalkNarratives(userId: string) {
+export type StoredTalk = {
+  id: string;
+  narrative: string;
+  answers: { id: string; question: string; answer: string }[];
+};
+
+export async function listTalks(userId: string): Promise<StoredTalk[]> {
   await ensureTalks();
   const rows = await db()`
-    select session_id, narrative
+    select session_id, narrative, answers
     from recall_talks
     where user_id = ${userId}
     order by created_at asc
@@ -523,7 +529,13 @@ export async function listTalkNarratives(userId: string) {
   return rows.map((row) => ({
     id: String(row.session_id),
     narrative: String(row.narrative ?? ""),
+    answers: talkAnswers(row.answers),
   }));
+}
+
+export async function listTalkNarratives(userId: string) {
+  const talks = await listTalks(userId);
+  return talks.map((talk) => ({ id: talk.id, narrative: talk.narrative }));
 }
 
 export async function insertTalk(
@@ -633,6 +645,80 @@ function numberOrNull(value: unknown) {
   }
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+async function ensureChat() {
+  await ready();
+  await db()`
+    create table if not exists recall_chat (
+      id uuid primary key,
+      user_id uuid not null references members (id) on delete cascade,
+      role text not null,
+      body text not null,
+      created_at timestamptz not null default now()
+    )
+  `;
+}
+
+export type ChatTurn = {
+  id: string;
+  role: "user" | "assistant";
+  body: string;
+};
+
+export async function listChat(userId: string): Promise<ChatTurn[]> {
+  await ensureChat();
+  const rows = await db()`
+    select id, role, body
+    from recall_chat
+    where user_id = ${userId}
+    order by created_at asc
+    limit 40
+  `;
+  return rows.flatMap((row) => {
+    const role = row.role === "assistant" ? "assistant" : row.role === "user" ? "user" : null;
+    if (!role) {
+      return [];
+    }
+    return [{ id: String(row.id), role, body: String(row.body ?? "") }];
+  });
+}
+
+export async function insertChat(
+  userId: string,
+  role: "user" | "assistant",
+  body: string,
+) {
+  await ensureChat();
+  const id = randomUUID();
+  await db()`
+    insert into recall_chat (id, user_id, role, body)
+    values (${id}, ${userId}, ${role}, ${body})
+  `;
+  return id;
+}
+
+function talkAnswers(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id : "";
+    if (!id) {
+      return [];
+    }
+    return [
+      {
+        id,
+        question: typeof row.question === "string" ? row.question : "",
+        answer: typeof row.answer === "string" ? row.answer : "",
+      },
+    ];
+  });
 }
 
 function isUnique(error: unknown) {

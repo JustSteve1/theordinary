@@ -88,6 +88,14 @@ create table if not exists recall_talks (
   created_at timestamptz not null default now()
 );
 
+create table if not exists recall_chat (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  role text not null,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists email_tokens (
   token text primary key,
   user_id uuid not null references members (id) on delete cascade,

@@ -4,7 +4,8 @@ import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 
 import { loadBee } from "@/src/platform/integrations/bee";
-import { assessTalk, buildAnswerKey } from "@/src/platform/recall/answer-key";
+import { assessTalk } from "@/src/platform/recall/answer-key";
+import { loadDossier } from "@/src/platform/recall/dossier";
 import { beeCoversYesterday, precheck } from "@/src/platform/recall/capture";
 import { clearReveal, writeReveal } from "@/src/platform/recall/cookies";
 import { copy } from "@/src/platform/recall/copy";
@@ -19,7 +20,6 @@ import {
   insertSession,
   insertTalk,
   listSessions,
-  listTalkNarratives,
   updateMicStatus,
 } from "@/src/platform/recall/store";
 import { buildSession } from "@/src/platform/recall/trend";
@@ -47,11 +47,9 @@ export async function finishTalk(payload: {
   }
 
   try {
-    const [sessions, bee, narratives] = await Promise.all([
-      listSessions(profile.id),
-      loadBee(),
-      listTalkNarratives(profile.id),
-    ]);
+    const dossier = await loadDossier(profile.id);
+    const sessions = dossier.sessions;
+    const facts = dossier.facts;
     const today = dateKey(Date.now());
     if (
       sessions.some(
@@ -61,12 +59,6 @@ export async function finishTalk(payload: {
     ) {
       return { error: copy.doneToday };
     }
-
-    const facts = buildAnswerKey({
-      bee,
-      narratives,
-      allowFixture: process.env.NODE_ENV === "development",
-    });
     const now = new Date();
     const session = assessTalk({
       id: randomUUID(),

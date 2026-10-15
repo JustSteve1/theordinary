@@ -181,7 +181,11 @@ export function buildAnswerKey(input: {
     }
   }
 
-  const source = facts.length === 0 && input.allowFixture ? FIXTURE : facts;
+  const fromBee = facts.some((fact) => fact.id.startsWith("bee-"));
+  const source =
+    !fromBee && input.allowFixture
+      ? [...FIXTURE, ...facts.filter((fact) => fact.id.startsWith("prior-"))]
+      : facts;
   const visible = source
     .map((fact) => {
       const question = fact.question.toLowerCase();

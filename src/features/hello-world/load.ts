@@ -1,13 +1,8 @@
-import { loadBee } from "@/src/platform/integrations/bee";
-import {
-  buildAnswerKey,
-  clientProbes,
-  type ClientProbe,
-} from "@/src/platform/recall/answer-key";
+import { clientProbes, type ClientProbe } from "@/src/platform/recall/answer-key";
 import { beeCoversYesterday, precheck } from "@/src/platform/recall/capture";
 import { dateKey } from "@/src/platform/recall/dates";
+import { loadDossier } from "@/src/platform/recall/dossier";
 import { homeState } from "@/src/features/hello-world/state";
-import { listSessions, listTalkNarratives } from "@/src/platform/recall/store";
 import type { HomeStateId, RecallProfile } from "@/src/platform/recall/types";
 
 export async function loadHomeContext(profile: RecallProfile): Promise<{
@@ -15,22 +10,14 @@ export async function loadHomeContext(profile: RecallProfile): Promise<{
   quietBee: boolean;
   probes: ClientProbe[];
 }> {
-  const [sessions, bee, narratives] = await Promise.all([
-    listSessions(profile.id),
-    loadBee(),
-    listTalkNarratives(profile.id),
-  ]);
+  const dossier = await loadDossier(profile.id);
+  const { bee, sessions, facts } = dossier;
   const today = dateKey(Date.now());
   const check = precheck({
     beeEnabled: profile.settings.beeEnabled,
     beeOk: bee.status === "ok",
     beeHadYesterday: beeCoversYesterday(bee),
     dayCapture: profile.settings.dayCapture,
-  });
-  const facts = buildAnswerKey({
-    bee,
-    narratives,
-    allowFixture: process.env.NODE_ENV === "development",
   });
   return {
     state: homeState({

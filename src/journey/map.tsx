@@ -101,7 +101,10 @@ const branches: { title: string; detail: string; steps: Step[] }[] = [
   {
     title: "Membership",
     detail: "Status, integrations, and account.",
-    steps: [{ id: "Week", label: "Dashboard", route: "/app" }],
+    steps: [
+      { id: "Week", label: "Dashboard", route: "/app" },
+      { id: "Chat", label: "Nova Lite", route: "/app/chat" },
+    ],
   },
 ];
 
