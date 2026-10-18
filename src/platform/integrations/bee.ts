@@ -1,29 +1,34 @@
 export type BeeSnapshot = {
   status: "ok" | "down" | "unauthorized";
   timezone: string;
-  conversations: { startMs: number; summary: string }[];
-  dailies: { atMs: number }[];
+  name: string | null;
+  conversations: { startMs: number; summary: string; detail: string }[];
+  dailies: { atMs: number; summary: string }[];
+  facts: string[];
   openTodos: string[];
 };
 
 const EMPTY: BeeSnapshot = {
   status: "down",
   timezone: "Europe/London",
+  name: null,
   conversations: [],
   dailies: [],
+  facts: [],
   openTodos: [],
 };
 
 export async function loadBee(): Promise<BeeSnapshot> {
   const origin = process.env.BEE_PROXY_URL ?? "http://127.0.0.1:8787";
-  const [profile, conversations, dailies, todos] = await Promise.all([
+  const [profile, conversations, dailies, todos, facts] = await Promise.all([
     beeGet(origin, "/v1/me"),
-    beeGet(origin, "/v1/conversations?limit=25"),
-    beeGet(origin, "/v1/daily?limit=14"),
+    beeGet(origin, "/v1/conversations?limit=8"),
+    beeGet(origin, "/v1/daily?limit=2"),
     beeGet(origin, "/v1/todos?limit=30"),
+    beeGet(origin, "/v1/facts?limit=20"),
   ]);
 
-  const responses = [profile, conversations, dailies, todos];
+  const responses = [profile, conversations, dailies, todos, facts];
   if (responses.every((response) => response === "down")) {
     return EMPTY;
   }
@@ -36,22 +41,33 @@ export async function loadBee(): Promise<BeeSnapshot> {
     stringField(record(conversations), "timezone") ??
     "Europe/London";
 
+  const profileRecord = record(profile);
+  const name = [
+    stringField(profileRecord, "first_name"),
+    stringField(profileRecord, "last_name"),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return {
     status: "ok",
     timezone,
+    name: name || null,
     conversations: arrayField(record(conversations), "conversations").flatMap(
       (item) => {
         const startMs = toMs(item.start_time ?? item.created_at);
         if (startMs === null) {
           return [];
         }
+        const summary =
+          stringField(item, "short_summary") ??
+          stringField(item, "title") ??
+          "A conversation";
         return [
           {
             startMs,
-            summary:
-              stringField(item, "short_summary") ??
-              stringField(item, "title") ??
-              "A conversation",
+            summary,
+            detail: clip(stringField(item, "summary") ?? summary, 500),
           },
         ];
       },
@@ -65,8 +81,29 @@ export async function loadBee(): Promise<BeeSnapshot> {
       const atMs = toMs(
         item.date_time ?? item.date ?? item.created_at ?? item.updated_at,
       );
-      return atMs === null ? [] : [{ atMs }];
+      if (atMs === null) {
+        return [];
+      }
+      return [
+        {
+          atMs,
+          summary: clip(
+            stringField(item, "short_summary") ??
+              stringField(item, "summary") ??
+              "",
+            700,
+          ),
+        },
+      ];
     }),
+    facts: arrayField(record(facts), "facts")
+      .flatMap((item) => {
+        const text = stringField(item, "text");
+        return text ? [{ text, confirmed: item.confirmed === true }] : [];
+      })
+      .sort((a, b) => Number(b.confirmed) - Number(a.confirmed))
+      .slice(0, 12)
+      .map((fact) => fact.text),
     openTodos: arrayField(record(todos), "todos").flatMap((item) => {
       if (item.completed === true) {
         return [];
@@ -119,6 +156,14 @@ function arrayField(record: Record<string, unknown>, ...keys: string[]) {
     }
   }
   return [];
+}
+
+function clip(text: string, max: number) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) {
+    return clean;
+  }
+  return `${clean.slice(0, max - 1)}…`;
 }
 
 function stringField(record: Record<string, unknown>, key: string) {
