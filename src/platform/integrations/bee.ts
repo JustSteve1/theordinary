@@ -41,6 +41,12 @@ export async function verifyBeeToken(token: string) {
 export async function loadBee(userId?: string): Promise<BeeSnapshot> {
   if (userId) {
     const token = await readSecret(userId, "bee", "access_token");
+    console.info(
+      JSON.stringify({
+        beeLoad: true,
+        tokenLength: token?.length ?? 0,
+      }),
+    );
     if (token) {
       return loadBeeFrom(BEE_API, token, "account");
     }
@@ -171,7 +177,15 @@ async function beeGet(
       return {};
     }
     return body as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    console.info(
+      JSON.stringify({
+        beeDown: true,
+        host: new URL(origin).host,
+        path,
+        reason: error instanceof Error ? error.message : "unknown",
+      }),
+    );
     return "down";
   }
 }
