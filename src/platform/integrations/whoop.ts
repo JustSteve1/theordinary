@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 
+import { readSecrets } from "@/src/platform/integrations/secrets";
 import {
   deleteConnection,
   getConnection,
@@ -25,6 +26,7 @@ export type WhoopSnapshot = {
   recovery: WhoopScore | null;
   sleep: WhoopScore | null;
   strain: WhoopScore | null;
+  recent: WhoopReading[];
 };
 
 export type WhoopScore = {
@@ -34,23 +36,66 @@ export type WhoopScore = {
   detail: string;
 };
 
+export type WhoopReading = WhoopScore & {
+  kind: "Recovery" | "Sleep" | "Strain";
+};
+
 const refreshInflight = new Map<string, Promise<Connection | null>>();
 
+function whoopEnv() {
+  return {
+    clientId: process.env.WHOOP_CLIENT_ID?.trim() ?? "",
+    clientSecret: process.env.WHOOP_CLIENT_SECRET?.trim() ?? "",
+    redirectUri: process.env.WHOOP_REDIRECT_URI?.trim() ?? "",
+  };
+}
+
 export function whoopConfig(): WhoopConfig | null {
-  const clientId = process.env.WHOOP_CLIENT_ID;
-  const clientSecret = process.env.WHOOP_CLIENT_SECRET;
-  const redirectUri = process.env.WHOOP_REDIRECT_URI;
-  if (!clientId || !clientSecret || !redirectUri) {
+  const env = whoopEnv();
+  if (!env.clientId || !env.clientSecret || !env.redirectUri) {
     return null;
   }
-  return { clientId, clientSecret, redirectUri };
+  return env;
+}
+
+export async function whoopCredentials(userId: string) {
+  const saved = await readSecrets(userId, "whoop");
+  const env = whoopEnv();
+  return {
+    clientId: saved.get("client_id")?.trim() || env.clientId,
+    clientSecret: saved.get("client_secret")?.trim() || env.clientSecret,
+    redirectUri: saved.get("redirect_uri")?.trim() || env.redirectUri,
+  };
+}
+
+export async function whoopAppConfig(
+  userId: string,
+): Promise<WhoopConfig | null> {
+  const creds = await whoopCredentials(userId);
+  if (!creds.clientId || !creds.clientSecret || !creds.redirectUri) {
+    return null;
+  }
+  return creds;
+}
+
+export async function whoopAppStatus(userId: string) {
+  const creds = await whoopCredentials(userId);
+  return {
+    ready: Boolean(creds.clientId && creds.clientSecret && creds.redirectUri),
+    canAuthorize: Boolean(creds.clientId && creds.redirectUri),
+    clientId: creds.clientId || null,
+    redirectUri: creds.redirectUri || null,
+  };
 }
 
 export function createWhoopState() {
   return randomBytes(4).toString("hex");
 }
 
-export function whoopAuthorizeUrl(config: WhoopConfig, state: string) {
+export function whoopAuthorizeUrl(
+  config: { clientId: string; redirectUri: string },
+  state: string,
+) {
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", config.clientId);
@@ -61,7 +106,7 @@ export function whoopAuthorizeUrl(config: WhoopConfig, state: string) {
 }
 
 export async function connectWhoop(input: { userId: string; code: string }) {
-  const config = whoopConfig();
+  const config = await whoopAppConfig(input.userId);
   if (!config) {
     throw new Error("WHOOP is not configured.");
   }
@@ -102,38 +147,41 @@ export async function disconnectWhoop(userId: string) {
   await deleteConnection(userId, "whoop");
 }
 
+function blankWhoop(
+  status: WhoopSnapshot["status"],
+  message: string | null,
+): WhoopSnapshot {
+  return {
+    status,
+    message,
+    recovery: null,
+    sleep: null,
+    strain: null,
+    recent: [],
+  };
+}
+
 export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
-  if (!whoopConfig()) {
-    return {
-      status: "unconfigured",
-      message: "WHOOP is not configured on this server.",
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+  const creds = await whoopCredentials(userId);
+  if (!creds.clientId || !creds.redirectUri) {
+    return blankWhoop(
+      "unconfigured",
+      "Add the WHOOP app credentials, then connect the account.",
+    );
+  }
+  if (!creds.clientSecret) {
+    return blankWhoop("disconnected", null);
   }
 
   const connection = await getConnection(userId, "whoop");
   if (!connection) {
-    return {
-      status: "disconnected",
-      message: null,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return blankWhoop("disconnected", null);
   }
 
   try {
     const accessToken = await accessTokenFor(connection);
     if (!accessToken) {
-      return {
-        status: "disconnected",
-        message: "WHOOP needs to be connected again.",
-        recovery: null,
-        sleep: null,
-        strain: null,
-      };
+      return blankWhoop("disconnected", "WHOOP needs to be connected again.");
     }
 
     const [recovery, sleep, cycles] = await Promise.all([
@@ -145,25 +193,26 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
       whoopFetch<{ records?: unknown[] }>(accessToken, "/v2/cycle?limit=10"),
     ]);
 
+    const recent = [
+      ...mapMany(recovery.records, mapRecovery, "Recovery"),
+      ...mapMany(sleep.records, mapSleep, "Sleep"),
+      ...mapMany(cycles.records, mapStrain, "Strain"),
+    ];
+
     return {
       status: "ok",
       message: null,
-      recovery: mapRecovery(recovery.records?.[0]),
-      sleep: mapSleep(sleep.records?.[0]),
-      strain: mapStrain(cycles.records?.[0]),
+      recovery: recent.find((reading) => reading.kind === "Recovery") ?? null,
+      sleep: recent.find((reading) => reading.kind === "Sleep") ?? null,
+      strain: recent.find((reading) => reading.kind === "Strain") ?? null,
+      recent,
     };
   } catch (error) {
     const message =
       error instanceof Error && error.message.includes("429")
         ? "WHOOP is busy. Try again shortly."
         : "WHOOP could not be read.";
-    return {
-      status: "error",
-      message,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return blankWhoop("error", message);
   }
 }
 
@@ -189,7 +238,7 @@ async function accessTokenFor(connection: Connection) {
 async function refreshConnection(
   connection: Connection,
 ): Promise<Connection | null> {
-  const config = whoopConfig();
+  const config = await whoopAppConfig(connection.userId);
   if (!config) {
     return null;
   }
@@ -270,6 +319,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function mapMany(
+  records: unknown[] | undefined,
+  map: (value: unknown) => WhoopScore | null,
+  kind: WhoopReading["kind"],
+): WhoopReading[] {
+  return (records ?? []).slice(0, 7).flatMap((record) => {
+    const score = map(record);
+    return score ? [{ ...score, kind }] : [];
+  });
 }
 
 function mapRecovery(value: unknown): WhoopScore | null {

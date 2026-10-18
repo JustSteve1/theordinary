@@ -15,7 +15,7 @@ export async function SettingsFlow({
     return null;
   }
   const notice = (await searchParams).notice;
-  const bee = profile.settings.beeEnabled ? await loadBee() : null;
+  const bee = profile.settings.beeEnabled ? await loadBee(profile.id) : null;
   const beeLabel = !profile.settings.beeEnabled
     ? "Not connected"
     : bee?.status === "ok"

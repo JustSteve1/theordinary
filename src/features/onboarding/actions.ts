@@ -80,7 +80,7 @@ export async function saveMicrophone(
 export async function connectBee(): Promise<FormState> {
   const profile = await requireRecall({ min: "bee", max: "done" });
   const alreadyDone = profile.step === "done";
-  const bee = await loadBee();
+  const bee = await loadBee(profile.id);
   if (bee.status !== "ok") {
     return {
       error: "Bee is quiet on this server. Try again when Bee is running.",
@@ -139,9 +139,8 @@ export async function saveReminderAction(
   if (!/^\d{2}:\d{2}$/.test(time)) {
     return { error: "Choose a time." };
   }
-  const channel = field(formData, "channel") === "notification"
-    ? "notification"
-    : "email";
+  const channel =
+    field(formData, "channel") === "notification" ? "notification" : "email";
   try {
     await saveReminder(profile.id, { time, enabled: true, channel });
   } catch (error) {

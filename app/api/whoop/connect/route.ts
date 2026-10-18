@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import {
   createWhoopState,
   whoopAuthorizeUrl,
-  whoopConfig,
+  whoopCredentials,
 } from "@/src/platform/integrations/whoop";
 import { getCurrentUser } from "@/src/platform/current-user";
 
@@ -14,8 +14,8 @@ export async function GET() {
     redirect("/login");
   }
 
-  const config = whoopConfig();
-  if (!config) {
+  const config = await whoopCredentials(user.id);
+  if (!config.clientId || !config.redirectUri) {
     redirect("/app?whoop=unconfigured");
   }
 

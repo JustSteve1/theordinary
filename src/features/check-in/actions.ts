@@ -37,16 +37,22 @@ export async function finishTalk(payload: {
     return { error: "Health-data consent is needed before a check-in." };
   }
 
-  const narrative = String(payload.narrative ?? "").trim().slice(0, 8000);
+  const narrative = String(payload.narrative ?? "")
+    .trim()
+    .slice(0, 8000);
   const answers = (Array.isArray(payload.answers) ? payload.answers : [])
     .slice(0, 6)
     .map((item) => ({
       id: String(item?.id ?? "").slice(0, 80),
-      answer: String(item?.answer ?? "").trim().slice(0, 2000),
+      answer: String(item?.answer ?? "")
+        .trim()
+        .slice(0, 2000),
     }))
     .filter((item) => item.id);
   if (!narrative && answers.every((item) => !item.answer)) {
-    return { error: "Nothing was captured. Hold the button and talk about your day." };
+    return {
+      error: "Nothing was captured. Hold the button and talk about your day.",
+    };
   }
 
   try {
@@ -57,7 +63,8 @@ export async function finishTalk(payload: {
     if (
       sessions.some(
         (session) =>
-          !session.aborted && dateKey(new Date(session.recordedAt).getTime()) === today,
+          !session.aborted &&
+          dateKey(new Date(session.recordedAt).getTime()) === today,
       )
     ) {
       return { error: copy.doneToday };
@@ -113,13 +120,14 @@ export async function completeCheckin(
   try {
     const [sessions, bee] = await Promise.all([
       listSessions(profile.id),
-      loadBee(),
+      loadBee(profile.id),
     ]);
     const today = dateKey(Date.now());
     if (
       sessions.some(
         (session) =>
-          !session.aborted && dateKey(new Date(session.recordedAt).getTime()) === today,
+          !session.aborted &&
+          dateKey(new Date(session.recordedAt).getTime()) === today,
       )
     ) {
       redirect("/home");
