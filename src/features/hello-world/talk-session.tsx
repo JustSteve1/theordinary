@@ -4,11 +4,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { ClientProbe } from "@/src/platform/recall/answer-key";
+import { copy } from "@/src/platform/recall/copy";
 import { RecordingIndicator } from "@/src/platform/shell/recording-indicator";
 
 type TalkPayload = {
   narrative: string;
   answers: { id: string; answer: string }[];
+  poorSleep: boolean;
+  unwell: boolean;
 };
 
 type SpeechRec = {
@@ -59,6 +62,8 @@ export function TalkSession({
   const [question, setQuestion] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [poorSleep, setPoorSleep] = useState(false);
+  const [unwell, setUnwell] = useState(false);
   const holdingRef = useRef(false);
   const active = useRef<string | "narrative">("narrative");
   const interim = useRef("");
@@ -213,7 +218,7 @@ export function TalkSession({
 
     saving.current = true;
     setStatus("Saving");
-    const result = await finishTalk({ narrative, answers });
+    const result = await finishTalk({ narrative, answers, poorSleep, unwell });
     saving.current = false;
     if (result.error) {
       setStatus(null);
@@ -239,6 +244,24 @@ export function TalkSession({
         ) : holding ? (
           <RecordingIndicator label="Listening" interactive={false} />
         ) : null}
+      </div>
+      <div className="mt-6 flex w-full max-w-sm flex-col gap-3 text-left text-[13px] text-stone-300">
+        <label className="flex min-h-12 items-center gap-3">
+          <input
+            type="checkbox"
+            checked={poorSleep}
+            onChange={(event) => setPoorSleep(event.target.checked)}
+          />
+          {copy.sleepQuestion}
+        </label>
+        <label className="flex min-h-12 items-center gap-3">
+          <input
+            type="checkbox"
+            checked={unwell}
+            onChange={(event) => setUnwell(event.target.checked)}
+          />
+          {copy.unwellQuestion}
+        </label>
       </div>
       <button
         type="button"

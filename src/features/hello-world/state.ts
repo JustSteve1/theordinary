@@ -1,4 +1,3 @@
-import { sameLondonDay } from "@/src/platform/recall/dates";
 import type { HomeStateId, Precheck, RecallProfile } from "@/src/platform/recall/types";
 
 export function homeState(input: {
@@ -8,17 +7,8 @@ export function homeState(input: {
   check: Precheck;
   now?: number;
 }): HomeStateId {
-  const now = input.now ?? Date.now();
   if (!input.profile.consent.healthAcceptedAt) {
     return "needs_consent";
-  }
-
-  const justOnboarded =
-    input.sessionCount === 0 &&
-    sameLondonDay(input.profile.onboardedAt, now);
-
-  if (justOnboarded) {
-    return "day1";
   }
 
   const mic = input.profile.settings.micStatus;

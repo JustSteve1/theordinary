@@ -1,5 +1,5 @@
 import type { BeeSnapshot } from "@/src/platform/integrations/bee";
-import { dateKey } from "@/src/platform/recall/dates";
+import { dateKey, formatDay } from "@/src/platform/recall/dates";
 import type { SessionRecord } from "@/src/platform/recall/types";
 import { cleanSessions, trendFor } from "@/src/platform/recall/trend";
 
@@ -152,6 +152,28 @@ export function buildAnswerKey(input: {
     }
   }
 
+  const latest = latestBeeDay(input.bee, now);
+  if (latest) {
+    const joined = keywords(latest.texts.join(" "));
+    if (!facts.some((fact) => fact.kind === "event") && joined.length > 0) {
+      facts.push({
+        id: `bee-event-${latest.day}`,
+        kind: "event",
+        question: `What do you remember from ${formatDay(latest.day)}?`,
+        terms: joined,
+      });
+    }
+    const evening = keywords(latest.evening.join(" "));
+    if (!facts.some((fact) => fact.kind === "meal") && evening.length > 0) {
+      facts.push({
+        id: `bee-meal-${latest.day}`,
+        kind: "meal",
+        question: "What did you eat that evening?",
+        terms: evening,
+      });
+    }
+  }
+
   const prior = input.narratives.at(-1);
   if (prior && !facts.some((fact) => fact.kind === "event")) {
     const terms = keywords(prior.narrative);
@@ -181,6 +203,45 @@ export function clientProbes(facts: AnswerFact[]): ClientProbe[] {
   return facts.map((fact) => ({ id: fact.id, question: fact.question }));
 }
 
+const BEE_DAY_LIMIT = 21;
+
+/** The newest Bee day within the last three weeks, used when yesterday is missing. */
+export function latestBeeDay(bee: BeeSnapshot, now = Date.now()) {
+  const texts: { day: string; summary: string; evening: boolean }[] = [];
+  for (const conversation of bee.conversations) {
+    const ageDays = (now - conversation.startMs) / 86_400_000;
+    if (ageDays < 0 || ageDays > BEE_DAY_LIMIT) {
+      continue;
+    }
+    texts.push({
+      day: dateKey(conversation.startMs, bee.timezone),
+      summary: conversation.summary,
+      evening: hourInZone(conversation.startMs, bee.timezone) >= 17,
+    });
+  }
+  for (const daily of bee.dailies) {
+    const ageDays = (now - daily.atMs) / 86_400_000;
+    if (ageDays < 0 || ageDays > BEE_DAY_LIMIT || !daily.summary) {
+      continue;
+    }
+    texts.push({
+      day: dateKey(daily.atMs, bee.timezone),
+      summary: daily.summary,
+      evening: false,
+    });
+  }
+  const day = texts.map((item) => item.day).sort().at(-1);
+  if (!day) {
+    return null;
+  }
+  const onDay = texts.filter((item) => item.day === day);
+  return {
+    day,
+    texts: onDay.map((item) => item.summary),
+    evening: onDay.filter((item) => item.evening).map((item) => item.summary),
+  };
+}
+
 /**
  * Scores a talk. The record future days keep is written by
  * skills/episodic-recall/log_session.py, which drops the words.
@@ -192,6 +253,7 @@ export function assessTalk(input: {
   narrative: string;
   answers: { id: string; answer: string }[];
   prior: SessionRecord[];
+  confounders?: { poorSleep: boolean; unwellOrAlcohol: boolean };
 }): SessionRecord {
   const narrative = input.narrative.trim();
   const coreFacts = input.facts.filter(
@@ -252,7 +314,10 @@ export function assessTalk(input: {
     coreRecall,
     detailRecall,
     intrusionRate: input.facts.length === 0 ? null : round(intrusionRate),
-    confounders: { poorSleep: false, unwellOrAlcohol: false },
+    confounders: input.confounders ?? {
+      poorSleep: false,
+      unwellOrAlcohol: false,
+    },
     trend:
       composite === null
         ? {

@@ -8,18 +8,22 @@ import type { HomeStateId } from "@/src/platform/recall/types";
 type TalkPayload = {
   narrative: string;
   answers: { id: string; answer: string }[];
+  poorSleep?: boolean;
+  unwell?: boolean;
 };
 
 export function HomeComposer({
   state,
   name,
   probes,
+  beeDay,
   launches,
   finishTalk,
 }: {
   state: HomeStateId;
   name: string;
   probes: ClientProbe[];
+  beeDay: string | null;
   launches: LaunchMap;
   finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
 }) {
@@ -28,6 +32,7 @@ export function HomeComposer({
       state={state}
       name={name}
       probes={probes}
+      beeDay={beeDay}
       launches={launches}
       consent={<HealthForm />}
       finishTalk={finishTalk}

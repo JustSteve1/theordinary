@@ -29,6 +29,8 @@ import { mockMissed } from "@/src/features/check-in/script";
 export async function finishTalk(payload: {
   narrative: string;
   answers: { id: string; answer: string }[];
+  poorSleep?: boolean;
+  unwell?: boolean;
 }): Promise<{ error?: string; saved?: boolean }> {
   const profile = await requireRecall({ min: "done", max: "done" });
   if (!profile.consent.healthAcceptedAt) {
@@ -68,6 +70,10 @@ export async function finishTalk(payload: {
       narrative,
       answers,
       prior: sessions,
+      confounders: {
+        poorSleep: Boolean(payload.poorSleep),
+        unwellOrAlcohol: Boolean(payload.unwell),
+      },
     });
     const session = await logSession({ ...scored, prior: sessions });
     await insertSession(profile.id, session);

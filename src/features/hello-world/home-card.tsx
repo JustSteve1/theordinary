@@ -15,6 +15,8 @@ export type LaunchMap = {
 type TalkPayload = {
   narrative: string;
   answers: { id: string; answer: string }[];
+  poorSleep?: boolean;
+  unwell?: boolean;
 };
 
 function MicFix() {
@@ -39,6 +41,7 @@ export function HomeCard({
   state,
   name,
   probes,
+  beeDay,
   launches,
   consent,
   finishTalk,
@@ -46,6 +49,7 @@ export function HomeCard({
   state: HomeStateId;
   name: string;
   probes: ClientProbe[];
+  beeDay: string | null;
   launches: LaunchMap;
   consent: React.ReactNode;
   finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
@@ -63,7 +67,17 @@ export function HomeCard({
         {state === "needs_consent" ? consent : null}
         {state === "mic_blocked" ? <MicFix /> : null}
         {state === "done_today" ? <p className="text-center">{copy.doneToday}</p> : null}
-        {canTalk ? <TalkSession probes={probes} finishTalk={finishTalk} /> : null}
+        {canTalk ? (
+          <div className="flex flex-col items-center">
+            <p className="max-w-sm text-center text-stone-300">{copy.ready}</p>
+            {beeDay ? (
+              <p className="mt-2 max-w-sm text-center">
+                I'll ask about {beeDay}.
+              </p>
+            ) : null}
+            <TalkSession probes={probes} finishTalk={finishTalk} />
+          </div>
+        ) : null}
       </div>
       <p className="mt-6">
         <ButtonLink href={launches.dashboard}>Dashboard</ButtonLink>

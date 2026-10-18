@@ -2,7 +2,7 @@ export type BeeSnapshot = {
   status: "ok" | "down" | "unauthorized";
   timezone: string;
   conversations: { startMs: number; summary: string }[];
-  dailies: { atMs: number }[];
+  dailies: { atMs: number; summary: string }[];
   openTodos: string[];
 };
 
@@ -65,7 +65,9 @@ export async function loadBee(): Promise<BeeSnapshot> {
       const atMs = toMs(
         item.date_time ?? item.date ?? item.created_at ?? item.updated_at,
       );
-      return atMs === null ? [] : [{ atMs }];
+      const summary =
+        stringField(item, "short_summary") ?? stringField(item, "summary") ?? "";
+      return atMs === null ? [] : [{ atMs, summary: summary.slice(0, 500) }];
     }),
     openTodos: arrayField(record(todos), "todos").flatMap((item) => {
       if (item.completed === true) {
