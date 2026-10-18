@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 
-import { Button, FieldLabel } from "@/src/platform/shell/ui";
+import { doorButton } from "@/src/platform/shell/door";
+import { FieldLabel } from "@/src/platform/shell/ui";
 import { changeSignupEmail, resendVerification } from "@/src/features/account/actions";
 import type { FormState } from "@/src/platform/recall/form";
 
@@ -53,11 +54,16 @@ export function VerifyPanel({
 
   return (
     <div className="mt-6 space-y-4">
-      <Button type="button" disabled={pending || retry > 0} onClick={resend}>
-        {pending ? "Sending…" : retry > 0 ? `Resend in ${retry}s` : "Resend link"}
-      </Button>
+      <button
+        type="button"
+        disabled={pending || retry > 0}
+        onClick={resend}
+        className={doorButton}
+      >
+        {pending ? "Please wait" : retry > 0 ? `Resend in ${retry}s` : "Resend link"}
+      </button>
       {error ? (
-        <p className="text-[#ffb4ab]" role="alert">
+        <p className="text-white" role="alert">
           {error}
         </p>
       ) : null}
@@ -79,9 +85,9 @@ export function VerifyPanel({
           onChange={setEmail}
           error={changeState.error}
         />
-        <Button type="submit" variant="secondary">
+        <button type="submit" className="text-[#0a84ff]">
           Change email
-        </Button>
+        </button>
       </form>
       <p>
         <a href="mailto:" className="text-[#0a84ff]">

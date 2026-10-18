@@ -4,7 +4,8 @@ import { Suspense, useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
-import { Button, FieldLabel, Panel, RecallFrame } from "@/src/platform/shell/ui";
+import { Door, doorButton } from "@/src/platform/shell/door";
+import { FieldLabel } from "@/src/platform/shell/ui";
 import { resetPassword } from "@/src/features/account/actions";
 import type { FormState } from "@/src/platform/recall/form";
 
@@ -23,36 +24,31 @@ function ResetForm() {
   const [show, setShow] = useState(false);
 
   return (
-    <RecallFrame>
-      <form action={action}>
-        <Panel>
-          <h1 className="text-[28px] font-medium tracking-tight">Choose a new password</h1>
-          <input type="hidden" name="token" value={token} />
-          <div className="mt-4">
-            <FieldLabel
-              label="New password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={setPassword}
-              error={state.error}
-              showPassword={show}
-              onTogglePassword={() => setShow((current) => !current)}
-            />
-          </div>
-          <Submit />
-        </Panel>
+    <Door title="Choose a new password">
+      <form action={action} className="mt-6">
+        <input type="hidden" name="token" value={token} />
+        <FieldLabel
+          label="New password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          error={state.error}
+          showPassword={show}
+          onTogglePassword={() => setShow((current) => !current)}
+        />
+        <Submit />
       </form>
-    </RecallFrame>
+    </Door>
   );
 }
 
 function Submit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="mt-4">
-      {pending ? "Saving…" : "Save password"}
-    </Button>
+    <button type="submit" disabled={pending} className={`mt-6 ${doorButton}`}>
+      {pending ? "Please wait" : "Save password"}
+    </button>
   );
 }

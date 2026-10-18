@@ -95,10 +95,6 @@ export async function middleware(request: NextRequest) {
     return continueWithPath(request);
   }
 
-  if (isDevelopment() && pathname === "/") {
-    return NextResponse.redirect(new URL("/dev/hello", request.url));
-  }
-
   if (isPublicRoute(pathname)) {
     return continueWithPath(request);
   }

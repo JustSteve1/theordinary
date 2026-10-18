@@ -1,8 +1,8 @@
 export const siteConfig = {
-  name: "Recall",
-  tagline: "A two-minute daily chat about your day.",
+  name: "The Ordinary",
+  tagline: "Something thoughtful is on its way.",
   description:
-    "A daily check-in about yesterday, and a simple way to see your own trend over time. Recall is not a medical test.",
+    "The Ordinary — a new project from 440Hz. Currently in development.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   contactEmail: "steve@440hz.uk",
 } as const;

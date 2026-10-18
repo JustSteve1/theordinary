@@ -154,7 +154,7 @@ export function FieldLabel({
           onBlur={onBlur}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
-          className="h-9 w-full rounded-[10px] border border-white/10 bg-transparent px-3 text-[13px] text-stone-100 outline-none"
+          className="h-9 w-full rounded-[10px] border border-white/15 bg-transparent px-3 text-[13px] text-white outline-none focus:border-[#0a84ff]"
         />
         {type === "password" && onTogglePassword ? (
           <button
@@ -168,7 +168,7 @@ export function FieldLabel({
         ) : null}
       </span>
       {error ? (
-        <span id={errorId} className="mt-1 block text-[#ffb4ab]" role="alert">
+        <span id={errorId} className="mt-1 block text-white" role="alert">
           {error}
         </span>
       ) : null}

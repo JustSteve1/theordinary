@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { Button } from "@/src/platform/shell/ui";
+import { doorButton } from "@/src/platform/shell/door";
 import { acceptTerms } from "@/src/features/account/actions";
 import type { FormState } from "@/src/platform/recall/form";
 import { copy } from "@/src/platform/recall/copy";
@@ -33,7 +33,7 @@ export function TermsForm() {
       />
       <p className="text-stone-400">{copy.healthNext}</p>
       {state.error ? (
-        <p className="text-[#ffb4ab]" role="alert">
+        <p className="text-white" role="alert">
           {state.error}
         </p>
       ) : null}
@@ -70,7 +70,7 @@ function Check({
       <span>
         {label}
         {error ? (
-          <span id={errorId} className="mt-1 block text-[#ffb4ab]" role="alert">
+          <span id={errorId} className="mt-1 block text-white" role="alert">
             {error}
           </span>
         ) : null}
@@ -82,8 +82,8 @@ function Check({
 function Submit({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={disabled || pending} className="w-full">
-      {pending ? "Creating account…" : "Continue"}
-    </Button>
+    <button type="submit" disabled={disabled || pending} className={doorButton}>
+      {pending ? "Please wait" : "Continue"}
+    </button>
   );
 }

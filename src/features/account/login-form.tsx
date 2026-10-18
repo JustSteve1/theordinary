@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { Button, FieldLabel, Panel } from "@/src/platform/shell/ui";
+import { doorButton } from "@/src/platform/shell/door";
+import { FieldLabel } from "@/src/platform/shell/ui";
 import { logIn, resendVerification } from "@/src/features/account/actions";
 import type { FormState } from "@/src/platform/recall/form";
 
@@ -24,9 +25,7 @@ export function LoginForm() {
 
   return (
     <form action={action}>
-      <Panel>
-        <h1 className="text-[28px] font-medium tracking-tight">Log in</h1>
-        <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-4">
           <FieldLabel
             label="Email"
             name="email"
@@ -46,28 +45,27 @@ export function LoginForm() {
             onTogglePassword={() => setShow((current) => !current)}
           />
         </div>
-        {state.error ? (
-          <p className="mt-4 text-[#ffb4ab]" role="alert">
-            {state.error}
-          </p>
-        ) : null}
-        {state.code === "unverified" ? (
-          <Button type="button" variant="secondary" className="mt-3" onClick={resend}>
-            Resend link
-          </Button>
-        ) : null}
-        {resendNote ? <p className="mt-3">{resendNote}</p> : null}
-        <Submit />
-        <p className="mt-4">
-          <Link href="/login/forgot" className="text-[#0a84ff]">
-            Forgot password
-          </Link>
+      {state.error ? (
+        <p className="mt-4 text-white" role="alert">
+          {state.error}
         </p>
-      </Panel>
+      ) : null}
+      {state.code === "unverified" ? (
+        <button type="button" className="mt-3 text-[#0a84ff]" onClick={resend}>
+          Resend link
+        </button>
+      ) : null}
+      {resendNote ? <p className="mt-3 text-stone-400">{resendNote}</p> : null}
+      <Submit />
       <p className="mt-4">
+        <Link href="/login/forgot" className="text-[#0a84ff]">
+          Forgot password
+        </Link>
+      </p>
+      <p className="mt-4 text-stone-400">
         New here?{" "}
         <Link href="/signup" className="text-[#0a84ff]">
-          Sign up
+          Get started
         </Link>
       </p>
     </form>
@@ -77,8 +75,8 @@ export function LoginForm() {
 function Submit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="mt-6 w-full">
-      {pending ? "Signing in…" : "Log in"}
-    </Button>
+    <button type="submit" disabled={pending} className={`mt-6 ${doorButton}`}>
+      {pending ? "Please wait" : "Continue"}
+    </button>
   );
 }

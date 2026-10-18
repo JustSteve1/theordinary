@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { SignupForm } from "@/src/features/account/signup-form";
-import { RecallFrame } from "@/src/platform/shell/ui";
+import { Door } from "@/src/platform/shell/door";
 import { currentProfile } from "@/src/platform/recall/guard";
 import { pathForStep } from "@/src/platform/recall/paths";
 
@@ -15,8 +15,11 @@ export default async function SignupPage() {
   }
 
   return (
-    <RecallFrame>
+    <Door
+      title="Create your account"
+      detail="First name, email, and a password."
+    >
       <SignupForm />
-    </RecallFrame>
+    </Door>
   );
 }

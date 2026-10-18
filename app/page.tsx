@@ -1,1 +1,5 @@
-export { default, metadata } from "@/src/journey/landing";
+import { ComingSoon } from "@/components/coming-soon";
+
+export default function HomePage() {
+  return <ComingSoon />;
+}

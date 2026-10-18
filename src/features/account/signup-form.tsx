@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { Button, FieldLabel, Panel } from "@/src/platform/shell/ui";
+import { doorButton } from "@/src/platform/shell/door";
+import { FieldLabel } from "@/src/platform/shell/ui";
 import { saveSignupDraft } from "@/src/features/account/actions";
 import type { FormState } from "@/src/platform/recall/form";
 
@@ -33,14 +34,7 @@ export function SignupForm() {
 
   return (
     <form action={action}>
-      <Panel>
-        <h1 className="text-[28px] font-medium tracking-tight">
-          Create your account
-        </h1>
-        <p className="mt-2 text-stone-400">
-          First name, email, and a password. You can leave whenever you want.
-        </p>
-        <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-4">
           <FieldLabel
             label="First name"
             name="name"
@@ -77,20 +71,19 @@ export function SignupForm() {
             onTogglePassword={() => setShow((current) => !current)}
           />
         </div>
-        {state.error ? (
-          <p className="mt-4 text-[#ffb4ab]" role="alert">
-            {state.error}{" "}
-            {state.error.includes("already have an account") ? (
-              <Link href="/login" className="text-[#0a84ff]">
-                Log in
-              </Link>
-            ) : null}
-          </p>
-        ) : null}
-        <Submit />
-      </Panel>
-      <p className="mt-4">
-        Already have an account?{" "}
+      {state.error ? (
+        <p className="mt-4 text-white" role="alert">
+          {state.error}{" "}
+          {state.error.includes("already have an account") ? (
+            <Link href="/login" className="text-[#0a84ff]">
+              Log in
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
+      <Submit />
+      <p className="mt-4 text-stone-400">
+        Already a member?{" "}
         <Link href="/login" className="text-[#0a84ff]">
           Log in
         </Link>
@@ -102,8 +95,8 @@ export function SignupForm() {
 function Submit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="mt-6 w-full">
-      {pending ? "Saving…" : "Continue"}
-    </Button>
+    <button type="submit" disabled={pending} className={`mt-6 ${doorButton}`}>
+      {pending ? "Please wait" : "Continue"}
+    </button>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/src/features/account/login-form";
-import { RecallFrame } from "@/src/platform/shell/ui";
+import { Door } from "@/src/platform/shell/door";
 import { currentProfile } from "@/src/platform/recall/guard";
 import { pathForStep } from "@/src/platform/recall/paths";
 
@@ -15,8 +15,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <RecallFrame>
+    <Door title="Welcome back">
       <LoginForm />
-    </RecallFrame>
+    </Door>
   );
 }

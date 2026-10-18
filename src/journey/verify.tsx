@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { Panel, RecallFrame } from "@/src/platform/shell/ui";
+import { Door } from "@/src/platform/shell/door";
 import { VerifyPanel } from "@/src/features/account/verify-panel";
 import { readPending } from "@/src/platform/recall/cookies";
 import { recallDefaults } from "@/src/platform/recall/defaults";
@@ -30,19 +30,16 @@ export default async function CheckEmailPage({
       : undefined;
 
   return (
-    <RecallFrame>
-      <Panel>
-        <h1 className="text-[28px] font-medium tracking-tight">
-          {expired ? "This link has expired." : "Check your email"}
-        </h1>
-        <p className="mt-3">
-          {profile
-            ? `We've sent a link to ${profile.email}. Open it on this device to carry on.`
-            : "We've sent a link. Open it on this device to carry on."}
-        </p>
-        <p className="mt-2 text-stone-400">If you don’t see it, check spam.</p>
-        <VerifyPanel initialRetry={retry} devLink={devLink} />
-      </Panel>
-    </RecallFrame>
+    <Door
+      title={expired ? "This link has expired" : "Check your email"}
+      detail={
+        profile
+          ? `We've sent a link to ${profile.email}. Open it on this device to carry on.`
+          : "We've sent a link. Open it on this device to carry on."
+      }
+    >
+      <p className="mt-2 text-stone-400">If you don’t see it, check spam.</p>
+      <VerifyPanel initialRetry={retry} devLink={devLink} />
+    </Door>
   );
 }
