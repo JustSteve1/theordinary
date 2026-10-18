@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ChatTile } from "@/src/features/chat/tile";
 import { MembershipScreen } from "@/src/features/dashboard";
+import { IntegrationsPanel } from "@/src/features/integrations/panel";
 import { SettingsFlow } from "@/src/journey/settings";
 import { TrendPanel } from "@/src/journey/trend-panel";
 import { currentProfile } from "@/src/platform/recall/guard";
@@ -20,11 +21,14 @@ export default async function DashboardPage({
   return (
     <div className="space-y-8">
       <ChatTile />
-      <MembershipScreen searchParams={Promise.resolve({ whoop: params.whoop })} />
+      <IntegrationsPanel notice={params.whoop} />
+      <MembershipScreen />
       {ready ? (
         <TrendPanel profileId={profile.id} fixture={params.fixture} />
       ) : null}
-      {ready ? <SettingsFlow searchParams={Promise.resolve(params)} embedded /> : null}
+      {ready ? (
+        <SettingsFlow searchParams={Promise.resolve(params)} embedded />
+      ) : null}
     </div>
   );
 }

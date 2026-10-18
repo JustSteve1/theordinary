@@ -4,13 +4,13 @@ import type { ContextSource } from "@/src/platform/context/types";
 
 export const beeSource: ContextSource = {
   id: "bee",
-  async load() {
-    const bee = await loadBee();
+  async load(userId) {
+    const bee = await loadBee(userId);
     if (bee.status !== "ok") {
       const reason =
         bee.status === "unauthorized"
-          ? "Bee login is required on this machine."
-          : "The Bee proxy is not running.";
+          ? "The saved Bee token was not accepted."
+          : "No Bee token is saved for this account.";
       return `Bee account: not connected. ${reason}`;
     }
 

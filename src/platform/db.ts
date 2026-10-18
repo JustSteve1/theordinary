@@ -32,6 +32,14 @@ create table if not exists connections (
   primary key (user_id, provider)
 );
 
+create table if not exists integration_secrets (
+  user_id uuid not null references members (id) on delete cascade,
+  provider text not null,
+  name text not null,
+  value text not null,
+  primary key (user_id, provider, name)
+);
+
 alter table members add column if not exists email_verified_at timestamptz;
 alter table members add column if not exists onboarding_step text not null default 'privacy';
 alter table members add column if not exists onboarded_at timestamptz;

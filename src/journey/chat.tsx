@@ -17,7 +17,7 @@ export default async function ChatScreen() {
   const [messages, whoop, bee] = await Promise.all([
     listChat(profile.id),
     loadWhoop(profile.id),
-    loadBee(),
+    loadBee(profile.id),
   ]);
   const readings = describeWhoop(whoop).split("\n").slice(1);
 
@@ -34,10 +34,10 @@ export default async function ChatScreen() {
         </h2>
         <p className="mt-4 text-[13px] leading-5 text-stone-300">
           {bee.status === "ok"
-            ? `Connected${bee.name ? ` as ${bee.name}` : ""}.`
+            ? `Connected${bee.name ? ` as ${bee.name}` : ""}${bee.via === "account" ? "" : " on this machine"}.`
             : bee.status === "unauthorized"
-              ? "Bee needs you to approve bee login on this machine."
-              : "Bee is quiet. Start bee proxy on this machine."}
+              ? "The saved Bee token was not accepted."
+              : "Not connected. Add a Bee token in Integrations."}
         </p>
         <h2 className="mt-6 text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
           WHOOP

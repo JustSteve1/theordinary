@@ -1,16 +1,7 @@
-import { beeSource } from "@/src/platform/context/bee";
+import { integrationRecord } from "@/src/features/integrations/registry";
 import { talksSource } from "@/src/platform/context/talks";
-import type { ContextSource } from "@/src/platform/context/types";
-import { whoopSource } from "@/src/platform/context/whoop";
 
 export type { ContextSource } from "@/src/platform/context/types";
-
-/** Swap a source by editing this list. The chat screen does not know which ones are on. */
-export const memberSources: ContextSource[] = [
-  talksSource,
-  beeSource,
-  whoopSource,
-];
 
 export function assistantInstructions(name: string) {
   return [
@@ -24,21 +15,17 @@ export function assistantInstructions(name: string) {
   ].join(" ");
 }
 
-export async function memberRecord(
-  userId: string,
-  sources: ContextSource[] = memberSources,
-) {
-  const blocks = (
-    await Promise.all(sources.map((source) => source.load(userId)))
-  ).filter((block): block is string => Boolean(block));
-  return blocks.join("\n\n");
+export async function memberRecord(userId: string) {
+  const [talks, integrations] = await Promise.all([
+    talksSource.load(userId),
+    integrationRecord(userId),
+  ]);
+  return [talks, integrations]
+    .filter((block): block is string => Boolean(block))
+    .join("\n\n");
 }
 
-export async function composeContext(
-  name: string,
-  userId: string,
-  sources: ContextSource[] = memberSources,
-) {
-  const record = await memberRecord(userId, sources);
+export async function composeContext(name: string, userId: string) {
+  const record = await memberRecord(userId);
   return `${assistantInstructions(name)}\n\n${record}`;
 }

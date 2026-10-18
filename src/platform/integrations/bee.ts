@@ -1,3 +1,5 @@
+import { readSecret } from "@/src/platform/integrations/secrets";
+
 export type BeeSnapshot = {
   status: "ok" | "down" | "unauthorized";
   timezone: string;
@@ -6,6 +8,7 @@ export type BeeSnapshot = {
   dailies: { atMs: number; summary: string }[];
   facts: string[];
   openTodos: string[];
+  via: "account" | "machine" | "none";
 };
 
 const EMPTY: BeeSnapshot = {
@@ -16,16 +19,47 @@ const EMPTY: BeeSnapshot = {
   dailies: [],
   facts: [],
   openTodos: [],
+  via: "none",
 };
 
-export async function loadBee(): Promise<BeeSnapshot> {
+const BEE_API = "https://app-api-developer.ce.bee.amazon.dev";
+
+export async function verifyBeeToken(token: string) {
+  const profile = await beeGet(BEE_API, "/v1/me", token);
+  if (profile === "down" || profile === "unauthorized") {
+    return null;
+  }
+  const name = [
+    stringField(profile, "first_name"),
+    stringField(profile, "last_name"),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return name ? { name } : { name: "Bee" };
+}
+
+export async function loadBee(userId?: string): Promise<BeeSnapshot> {
+  if (userId) {
+    const token = await readSecret(userId, "bee", "access_token");
+    if (token) {
+      return loadBeeFrom(BEE_API, token, "account");
+    }
+  }
   const origin = process.env.BEE_PROXY_URL ?? "http://127.0.0.1:8787";
+  return loadBeeFrom(origin, undefined, "machine");
+}
+
+async function loadBeeFrom(
+  origin: string,
+  token: string | undefined,
+  via: BeeSnapshot["via"],
+): Promise<BeeSnapshot> {
   const [profile, conversations, dailies, todos, facts] = await Promise.all([
-    beeGet(origin, "/v1/me"),
-    beeGet(origin, "/v1/conversations?limit=8"),
-    beeGet(origin, "/v1/daily?limit=2"),
-    beeGet(origin, "/v1/todos?limit=30"),
-    beeGet(origin, "/v1/facts?limit=20"),
+    beeGet(origin, "/v1/me", token),
+    beeGet(origin, "/v1/conversations?limit=8", token),
+    beeGet(origin, "/v1/daily?limit=2", token),
+    beeGet(origin, "/v1/todos?limit=30", token),
+    beeGet(origin, "/v1/facts?limit=20", token),
   ]);
 
   const responses = [profile, conversations, dailies, todos, facts];
@@ -33,7 +67,7 @@ export async function loadBee(): Promise<BeeSnapshot> {
     return EMPTY;
   }
   if (profile === "unauthorized") {
-    return { ...EMPTY, status: "unauthorized" };
+    return { ...EMPTY, status: "unauthorized", via };
   }
 
   const timezone =
@@ -53,6 +87,7 @@ export async function loadBee(): Promise<BeeSnapshot> {
     status: "ok",
     timezone,
     name: name || null,
+    via,
     conversations: arrayField(record(conversations), "conversations").flatMap(
       (item) => {
         const startMs = toMs(item.start_time ?? item.created_at);
@@ -117,11 +152,13 @@ export async function loadBee(): Promise<BeeSnapshot> {
 async function beeGet(
   origin: string,
   path: string,
+  token?: string,
 ): Promise<Record<string, unknown> | "down" | "unauthorized"> {
   try {
     const response = await fetch(`${origin}${path}`, {
       cache: "no-store",
-      signal: AbortSignal.timeout(4000),
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      signal: AbortSignal.timeout(8000),
     });
     if (response.status === 401 || response.status === 403) {
       return "unauthorized";

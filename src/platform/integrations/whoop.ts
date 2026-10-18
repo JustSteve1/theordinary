@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 
+import { readSecrets } from "@/src/platform/integrations/secrets";
 import {
   deleteConnection,
   getConnection,
@@ -51,6 +52,34 @@ export function whoopConfig(): WhoopConfig | null {
   return { clientId, clientSecret, redirectUri };
 }
 
+export async function whoopAppConfig(
+  userId: string,
+): Promise<WhoopConfig | null> {
+  const saved = await readSecrets(userId, "whoop");
+  const clientId = saved.get("client_id")?.trim();
+  const clientSecret = saved.get("client_secret")?.trim();
+  const redirectUri = saved.get("redirect_uri")?.trim();
+  if (clientId && clientSecret && redirectUri) {
+    return { clientId, clientSecret, redirectUri };
+  }
+  return whoopConfig();
+}
+
+export async function whoopAppStatus(userId: string) {
+  const saved = await readSecrets(userId, "whoop");
+  const env = whoopConfig();
+  const clientId = saved.get("client_id")?.trim() || env?.clientId || null;
+  const clientSecret =
+    saved.get("client_secret")?.trim() || env?.clientSecret || null;
+  const redirectUri =
+    saved.get("redirect_uri")?.trim() || env?.redirectUri || null;
+  return {
+    ready: Boolean(clientId && clientSecret && redirectUri),
+    clientId,
+    redirectUri,
+  };
+}
+
 export function createWhoopState() {
   return randomBytes(4).toString("hex");
 }
@@ -66,7 +95,7 @@ export function whoopAuthorizeUrl(config: WhoopConfig, state: string) {
 }
 
 export async function connectWhoop(input: { userId: string; code: string }) {
-  const config = whoopConfig();
+  const config = await whoopAppConfig(input.userId);
   if (!config) {
     throw new Error("WHOOP is not configured.");
   }
@@ -122,8 +151,11 @@ function blankWhoop(
 }
 
 export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
-  if (!whoopConfig()) {
-    return blankWhoop("unconfigured", "WHOOP is not configured on this server.");
+  if (!(await whoopAppConfig(userId))) {
+    return blankWhoop(
+      "unconfigured",
+      "Add the WHOOP app credentials, then connect the account.",
+    );
   }
 
   const connection = await getConnection(userId, "whoop");
@@ -191,7 +223,7 @@ async function accessTokenFor(connection: Connection) {
 async function refreshConnection(
   connection: Connection,
 ): Promise<Connection | null> {
-  const config = whoopConfig();
+  const config = await whoopAppConfig(connection.userId);
   if (!config) {
     return null;
   }
