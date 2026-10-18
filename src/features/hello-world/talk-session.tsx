@@ -19,7 +19,7 @@ type SpeechRec = {
   interimResults: boolean;
   lang: string;
   onresult: ((event: SpeechEvent) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -30,6 +30,22 @@ type SpeechEvent = {
   resultIndex: number;
   results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
 };
+
+function emptyReason(problem: string | null) {
+  if (problem === "unsupported") {
+    return "This browser can't write down speech. Chrome can.";
+  }
+  if (problem === "not-allowed" || problem === "service-not-allowed") {
+    return "Allow the microphone for this site, then hold to talk again.";
+  }
+  if (problem === "audio-capture") {
+    return "Recall can't use your microphone.";
+  }
+  if (problem === "start") {
+    return "This browser didn't start speech capture.";
+  }
+  return "Nothing was captured. Hold the button and talk about your day.";
+}
 
 function recognition(): SpeechRec | null {
   if (typeof window === "undefined") {
@@ -44,7 +60,8 @@ function recognition(): SpeechRec | null {
     return null;
   }
   const rec = new Ctor();
-  rec.continuous = true;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  rec.continuous = !ios;
   rec.interimResults = true;
   rec.lang = "en-GB";
   return rec;
@@ -64,6 +81,7 @@ export function TalkSession({
   const [error, setError] = useState<string | null>(null);
   const [poorSleep, setPoorSleep] = useState(false);
   const [unwell, setUnwell] = useState(false);
+  const [heard, setHeard] = useState("");
   const holdingRef = useRef(false);
   const active = useRef<string | "narrative">("narrative");
   const interim = useRef("");
@@ -75,6 +93,14 @@ export function TalkSession({
   const recRef = useRef<SpeechRec | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const saving = useRef(false);
+  const speechProblem = useRef<string | null>(null);
+  const endWait = useRef<(() => void) | null>(null);
+  const release = useRef<(() => void) | null>(null);
+
+  function remember() {
+    const answers = Object.values(buckets.current.answers).join(" ");
+    setHeard(`${buckets.current.narrative} ${answers} ${interim.current}`.replace(/\s+/g, " ").trim());
+  }
 
   function append(text: string) {
     const clean = text.trim();
@@ -83,10 +109,11 @@ export function TalkSession({
     }
     if (active.current === "narrative") {
       buckets.current.narrative = `${buckets.current.narrative} ${clean}`.trim();
-      return;
+    } else {
+      const id = active.current;
+      buckets.current.answers[id] = `${buckets.current.answers[id] ?? ""} ${clean}`.trim();
     }
-    const id = active.current;
-    buckets.current.answers[id] = `${buckets.current.answers[id] ?? ""} ${clean}`.trim();
+    remember();
   }
 
   function commitInterim() {
@@ -142,21 +169,17 @@ export function TalkSession({
       append(finalText);
     }
     interim.current = pending.trim();
+    remember();
   }
 
-  async function begin() {
+  function begin() {
     if (holdingRef.current || saving.current) {
       return;
     }
     setError(null);
     setStatus(null);
-    try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Recall can't use your microphone.");
-      return;
-    }
-
+    setHeard("");
+    speechProblem.current = null;
     buckets.current = { narrative: "", answers: {} };
     interim.current = "";
     active.current = "narrative";
@@ -168,7 +191,13 @@ export function TalkSession({
     recRef.current = rec;
     if (rec) {
       rec.onresult = onSpeech;
-      rec.onerror = () => undefined;
+      rec.onerror = (event) => {
+        const code = event.error ?? "";
+        if (code === "aborted" || code === "no-speech") {
+          return;
+        }
+        speechProblem.current = code;
+      };
       rec.onend = () => {
         if (holdingRef.current) {
           try {
@@ -176,19 +205,36 @@ export function TalkSession({
           } catch {
             /* The browser is already listening. */
           }
+          return;
         }
+        endWait.current?.();
       };
       try {
         rec.start();
       } catch {
-        setError("This browser didn't start speech capture.");
+        speechProblem.current = "start";
       }
     } else {
-      setError("This browser can't write down speech. Chrome can.");
+      speechProblem.current = "unsupported";
     }
 
+    const onRelease = () => void stop();
+    release.current = onRelease;
+    window.addEventListener("pointerup", onRelease);
+    window.addEventListener("touchend", onRelease);
+    void openMicrophone();
     if (probes.length > 0) {
       later(8000, () => showProbe(0));
+    }
+  }
+
+  async function openMicrophone() {
+    try {
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      if (!recRef.current) {
+        speechProblem.current = "audio-capture";
+      }
     }
   }
 
@@ -198,10 +244,30 @@ export function TalkSession({
     }
     holdingRef.current = false;
     setHolding(false);
+    if (release.current) {
+      window.removeEventListener("pointerup", release.current);
+      window.removeEventListener("touchend", release.current);
+      release.current = null;
+    }
     clearTimers();
-    commitInterim();
     setQuestion(null);
-    recRef.current?.stop();
+    const rec = recRef.current;
+    if (rec) {
+      await new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, 1500);
+        endWait.current = () => {
+          window.clearTimeout(timer);
+          resolve();
+        };
+        try {
+          rec.stop();
+        } catch {
+          resolve();
+        }
+      });
+      endWait.current = null;
+    }
+    commitInterim();
     recRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -212,7 +278,7 @@ export function TalkSession({
       answer: buckets.current.answers[probe.id] ?? "",
     }));
     if (!narrative && answers.every((item) => !item.answer)) {
-      setError("Nothing was captured. Hold the button and talk about your day.");
+      setError(emptyReason(speechProblem.current));
       return;
     }
 
@@ -236,13 +302,18 @@ export function TalkSession({
           ? "Questions start once Bee has a day to draw from."
           : "A question may appear while you talk. Answer it in your own words."}
       </p>
-      <div className="mt-6 flex min-h-16 items-center justify-center px-4 text-center">
+      <div className="mt-6 flex min-h-16 flex-col items-center justify-center px-4 text-center">
         {question ? (
           <p className="max-w-sm text-balance text-[28px] font-medium leading-8 tracking-tight text-stone-100" aria-live="assertive">
             {question}
           </p>
         ) : holding ? (
           <RecordingIndicator label="Listening" interactive={false} />
+        ) : null}
+        {heard ? (
+          <p className="mt-3 max-w-sm text-[13px] leading-5 text-stone-300" aria-live="polite">
+            {heard}
+          </p>
         ) : null}
       </div>
       <div className="mt-6 flex w-full max-w-sm flex-col gap-3 text-left text-[13px] text-stone-300">
@@ -265,21 +336,19 @@ export function TalkSession({
       </div>
       <button
         type="button"
-        className={`mt-4 flex size-44 items-center justify-center rounded-full border text-[13px] text-stone-100 touch-none select-none ${
+        className={`mt-4 flex size-44 items-center justify-center rounded-full border text-[13px] text-stone-100 touch-none select-none [-webkit-touch-callout:none] ${
           holding ? "border-[#0a84ff]" : "border-white/15"
         }`}
         aria-pressed={holding}
         aria-label="Hold to talk about your day"
+        onContextMenu={(event) => event.preventDefault()}
         onPointerDown={(event) => {
           if (event.button !== 0) {
             return;
           }
           event.preventDefault();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          void begin();
+          begin();
         }}
-        onPointerUp={() => void stop()}
-        onPointerCancel={() => void stop()}
         onKeyDown={(event) => {
           if ((event.key === " " || event.key === "Enter") && !event.repeat) {
             event.preventDefault();
