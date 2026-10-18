@@ -76,6 +76,10 @@ export async function findUserById(id: string): Promise<PublicUser | null> {
   return { id: user.id, email: user.email, name: user.name };
 }
 
+export async function ensureFirstMember() {
+  await prepare();
+}
+
 async function prepare() {
   await ready();
   if (!seeded) {
