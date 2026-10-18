@@ -8,8 +8,11 @@ export function describeWhoop(whoop: WhoopSnapshot) {
   ];
   for (const reading of whoop.recent) {
     const when = reading.atMs === null ? "" : `${formatDay(dateKey(reading.atMs))} `;
-    const value = reading.value === null ? "" : ` ${reading.value}`;
-    lines.push(`- ${when}${reading.kind}: ${reading.detail || reading.state}${value}`);
+    const body =
+      reading.detail ||
+      reading.state ||
+      (reading.value === null ? "No score" : String(reading.value));
+    lines.push(`- ${when}${reading.kind}: ${body}`);
   }
   return lines.join("\n");
 }
