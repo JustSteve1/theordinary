@@ -1,3 +1,6 @@
+import http from "node:http";
+import https from "node:https";
+
 import { readSecret } from "@/src/platform/integrations/secrets";
 
 export type BeeSnapshot = {
@@ -41,12 +44,6 @@ export async function verifyBeeToken(token: string) {
 export async function loadBee(userId?: string): Promise<BeeSnapshot> {
   if (userId) {
     const token = await readSecret(userId, "bee", "access_token");
-    console.info(
-      JSON.stringify({
-        beeLoad: true,
-        tokenLength: token?.length ?? 0,
-      }),
-    );
     if (token) {
       return loadBeeFrom(BEE_API, token, "account");
     }
@@ -160,34 +157,62 @@ async function beeGet(
   path: string,
   token?: string,
 ): Promise<Record<string, unknown> | "down" | "unauthorized"> {
-  try {
-    const response = await fetch(`${origin}${path}`, {
-      cache: "no-store",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      signal: AbortSignal.timeout(8000),
-    });
-    if (response.status === 401 || response.status === 403) {
-      return "unauthorized";
-    }
-    if (!response.ok) {
-      return {};
-    }
-    const body = (await response.json()) as unknown;
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return {};
-    }
-    return body as Record<string, unknown>;
-  } catch (error) {
-    console.info(
-      JSON.stringify({
-        beeDown: true,
-        host: new URL(origin).host,
-        path,
-        reason: error instanceof Error ? error.message : "unknown",
-      }),
+  const target = new URL(path, origin);
+  return new Promise((resolve) => {
+    const client = target.protocol === "http:" ? http : https;
+    const request = client.request(
+      target,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        timeout: 8000,
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          const status = response.statusCode ?? 0;
+          if (status === 401 || status === 403) {
+            resolve("unauthorized");
+            return;
+          }
+          if (status < 200 || status >= 300) {
+            resolve({});
+            return;
+          }
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+            if (!body || typeof body !== "object" || Array.isArray(body)) {
+              resolve({});
+              return;
+            }
+            resolve(body as Record<string, unknown>);
+          } catch {
+            resolve({});
+          }
+        });
+      },
     );
-    return "down";
-  }
+    request.on("timeout", () => {
+      request.destroy();
+      resolve("down");
+    });
+    request.on("error", (error) => {
+      console.info(
+        JSON.stringify({
+          beeDown: true,
+          host: target.host,
+          code: "code" in error ? error.code : undefined,
+          reason: error.message,
+        }),
+      );
+      resolve("down");
+    });
+    request.end();
+  });
 }
 
 function record(
