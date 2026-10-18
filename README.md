@@ -44,7 +44,7 @@ On Recall screens the pack’s reading rules sit on top of that:
 5. Dashboard: S-14, including sample trends of 0, 3, 5, and 12 sessions
 6. Settings: S-15
 
-Accounts stay pending until the email link is opened. In development that link is shown on the check-your-email screen. `sendVerificationEmail` is the seam for a real sender. Passkeys are off. This stack is password-only.
+Accounts stay pending until the email link is opened. In development that link is shown on the check-your-email screen. In production `sendVerificationEmail` sends it through Resend when `RESEND_API_KEY` and `EMAIL_FROM` are set, and it refuses to pretend the mail went out when they are not. Passkeys are off. This stack is password-only.
 
 ## Routes
 
@@ -84,7 +84,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Postgres must be reachable at `DATABASE_URL`. The schema is created on first use. Set `SESSION_SECRET` to at least 16 characters. `USER1_EMAIL`, `USER1_NAME`, and `USER1_PASSWORD` still seed the first member. Bee, when you want it, is `BEE_PROXY_URL` (default `http://127.0.0.1:8787`).
+Postgres must be reachable at `DATABASE_URL`. The schema is created on first use. Set `SESSION_SECRET` to at least 16 characters. In local development, `USER1_EMAIL`, `USER1_NAME`, and `USER1_PASSWORD` seed the first member. A hosted deploy does not. Bee, when you want it, is `BEE_PROXY_URL` (default `http://127.0.0.1:8787`).
 
 ## Scripts
 

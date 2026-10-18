@@ -88,6 +88,12 @@ async function prepare() {
 }
 
 async function seedFirstMember() {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production"
+  ) {
+    return;
+  }
   const password = process.env.USER1_PASSWORD?.trim();
   if (!password || password.length < 8) {
     return;

@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "crypto";
 
+import { deliverAccountEmail } from "@/src/platform/mail";
 import { hashPassword, verifyPassword } from "@/src/platform/password";
 import { db, ready, StoreError } from "@/src/platform/db";
 import { recallDefaults, type OnboardingStep } from "@/src/platform/recall/defaults";
@@ -562,9 +563,7 @@ export async function deleteAccount(userId: string) {
 }
 
 export async function sendVerificationEmail(email: string, url: string) {
-  if (process.env.NODE_ENV !== "production") {
-    console.info("verification link", email, url);
-  }
+  await deliverAccountEmail(email, url);
 }
 
 function mapSession(row: Record<string, unknown>): SessionRecord {
