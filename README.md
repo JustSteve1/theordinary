@@ -72,7 +72,7 @@ Accounts stay pending until the email link is opened. In development that link i
 
 Session history list, confounders view, export for a GP, carers or supporters, native apps, text-chat check-ins, cued recall, and recognition tests.
 
-Also not in this pass: the real `episodic-recall` runtime, a nightly answer-key job, day-capture audio, analytics, and outbound mail.
+`skills/episodic-recall/log_session.py` writes the session record at the end of a check-in: scores, confounders, and the personal trend. It refuses transcripts. Still later: the rest of the episodic-recall runtime, a nightly answer-key job, day-capture audio, analytics, and outbound mail.
 
 ## Getting started
 

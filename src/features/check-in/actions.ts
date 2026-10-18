@@ -22,6 +22,7 @@ import {
   listSessions,
   updateMicStatus,
 } from "@/src/platform/recall/store";
+import { logSession } from "@/src/platform/recall/log-session";
 import { buildSession } from "@/src/platform/recall/trend";
 import { mockMissed } from "@/src/features/check-in/script";
 
@@ -60,7 +61,7 @@ export async function finishTalk(payload: {
       return { error: copy.doneToday };
     }
     const now = new Date();
-    const session = assessTalk({
+    const scored = assessTalk({
       id: randomUUID(),
       now,
       facts,
@@ -68,6 +69,7 @@ export async function finishTalk(payload: {
       answers,
       prior: sessions,
     });
+    const session = await logSession({ ...scored, prior: sessions });
     await insertSession(profile.id, session);
     await insertTalk(
       profile.id,
@@ -126,7 +128,7 @@ export async function completeCheckin(
       return { error: copy.notEnough };
     }
 
-    const session = buildSession({
+    const scored = buildSession({
       id: randomUUID(),
       now: new Date(),
       date: yesterdayKey(),
@@ -134,6 +136,7 @@ export async function completeCheckin(
       unwell,
       prior: sessions,
     });
+    const session = await logSession({ ...scored, prior: sessions });
     await insertSession(profile.id, session);
     await writeReveal(mockMissed);
     redirect(`/checkin/done?session=${session.id}`);

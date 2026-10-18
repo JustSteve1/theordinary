@@ -182,8 +182,8 @@ export function clientProbes(facts: AnswerFact[]): ClientProbe[] {
 }
 
 /**
- * Scores a talk into the episodic-recall session record.
- * This is the socket the open-source `log_session.py` skill replaces later.
+ * Scores a talk. The record future days keep is written by
+ * skills/episodic-recall/log_session.py, which drops the words.
  */
 export function assessTalk(input: {
   id: string;
