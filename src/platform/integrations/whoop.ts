@@ -25,6 +25,7 @@ export type WhoopSnapshot = {
   recovery: WhoopScore | null;
   sleep: WhoopScore | null;
   strain: WhoopScore | null;
+  recent: WhoopReading[];
 };
 
 export type WhoopScore = {
@@ -32,6 +33,10 @@ export type WhoopScore = {
   atMs: number | null;
   value: number | null;
   detail: string;
+};
+
+export type WhoopReading = WhoopScore & {
+  kind: "Recovery" | "Sleep" | "Strain";
 };
 
 const refreshInflight = new Map<string, Promise<Connection | null>>();
@@ -102,38 +107,34 @@ export async function disconnectWhoop(userId: string) {
   await deleteConnection(userId, "whoop");
 }
 
+function blankWhoop(
+  status: WhoopSnapshot["status"],
+  message: string | null,
+): WhoopSnapshot {
+  return {
+    status,
+    message,
+    recovery: null,
+    sleep: null,
+    strain: null,
+    recent: [],
+  };
+}
+
 export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
   if (!whoopConfig()) {
-    return {
-      status: "unconfigured",
-      message: "WHOOP is not configured on this server.",
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return blankWhoop("unconfigured", "WHOOP is not configured on this server.");
   }
 
   const connection = await getConnection(userId, "whoop");
   if (!connection) {
-    return {
-      status: "disconnected",
-      message: null,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return blankWhoop("disconnected", null);
   }
 
   try {
     const accessToken = await accessTokenFor(connection);
     if (!accessToken) {
-      return {
-        status: "disconnected",
-        message: "WHOOP needs to be connected again.",
-        recovery: null,
-        sleep: null,
-        strain: null,
-      };
+      return blankWhoop("disconnected", "WHOOP needs to be connected again.");
     }
 
     const [recovery, sleep, cycles] = await Promise.all([
@@ -145,25 +146,26 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
       whoopFetch<{ records?: unknown[] }>(accessToken, "/v2/cycle?limit=10"),
     ]);
 
+    const recent = [
+      ...mapMany(recovery.records, mapRecovery, "Recovery"),
+      ...mapMany(sleep.records, mapSleep, "Sleep"),
+      ...mapMany(cycles.records, mapStrain, "Strain"),
+    ];
+
     return {
       status: "ok",
       message: null,
-      recovery: mapRecovery(recovery.records?.[0]),
-      sleep: mapSleep(sleep.records?.[0]),
-      strain: mapStrain(cycles.records?.[0]),
+      recovery: recent.find((reading) => reading.kind === "Recovery") ?? null,
+      sleep: recent.find((reading) => reading.kind === "Sleep") ?? null,
+      strain: recent.find((reading) => reading.kind === "Strain") ?? null,
+      recent,
     };
   } catch (error) {
     const message =
       error instanceof Error && error.message.includes("429")
         ? "WHOOP is busy. Try again shortly."
         : "WHOOP could not be read.";
-    return {
-      status: "error",
-      message,
-      recovery: null,
-      sleep: null,
-      strain: null,
-    };
+    return blankWhoop("error", message);
   }
 }
 
@@ -270,6 +272,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+
+function mapMany(
+  records: unknown[] | undefined,
+  map: (value: unknown) => WhoopScore | null,
+  kind: WhoopReading["kind"],
+): WhoopReading[] {
+  return (records ?? []).slice(0, 7).flatMap((record) => {
+    const score = map(record);
+    return score ? [{ ...score, kind }] : [];
+  });
 }
 
 function mapRecovery(value: unknown): WhoopScore | null {
