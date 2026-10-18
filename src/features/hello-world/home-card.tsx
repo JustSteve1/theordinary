@@ -72,7 +72,7 @@ export function HomeCard({
             <p className="max-w-sm text-center text-stone-300">{copy.ready}</p>
             {beeDay ? (
               <p className="mt-2 max-w-sm text-center">
-                I'll ask about {beeDay}.
+                I&apos;ll ask about {beeDay}.
               </p>
             ) : null}
             <TalkSession probes={probes} finishTalk={finishTalk} />
