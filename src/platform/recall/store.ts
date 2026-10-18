@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "crypto";
 
 import { deliverAccountEmail } from "@/src/platform/mail";
+import { ensureFirstMember } from "@/src/platform/members";
 import { hashPassword, verifyPassword } from "@/src/platform/password";
 import { db, ready, StoreError } from "@/src/platform/db";
 import { recallDefaults, type OnboardingStep } from "@/src/platform/recall/defaults";
@@ -211,7 +212,7 @@ export async function changePendingEmail(userId: string, email: string) {
 }
 
 export async function findAuthByEmail(email: string) {
-  await ready();
+  await ensureFirstMember();
   const rows = (await db()`
     select
       id, email, name, password_hash, email_verified_at, onboarding_step,

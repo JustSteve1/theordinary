@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [mvp-next]
+    branches: [main]
   pull_request:
-    branches: [mvp-next]
+    branches: [main]
 
 jobs:
   ci:

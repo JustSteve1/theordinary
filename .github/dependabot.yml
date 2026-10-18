@@ -3,7 +3,7 @@ updates:
   # Keep Dependabot for security, but stop opening noisy version bump PRs.
   - package-ecosystem: npm
     directory: "/"
-    target-branch: "mvp-next"
+    target-branch: "main"
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
@@ -21,7 +21,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: "/"
-    target-branch: "mvp-next"
+    target-branch: "main"
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
