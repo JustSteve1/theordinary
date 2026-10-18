@@ -6,6 +6,7 @@ import {
 import { loadBee } from "@/src/platform/integrations/bee";
 import { loadWhoop, whoopAppStatus } from "@/src/platform/integrations/whoop";
 import { getCurrentUser } from "@/src/platform/current-user";
+import { doorButton } from "@/src/platform/shell/door";
 import { sectionLabel } from "@/src/platform/shell/ui";
 import { redirect } from "next/navigation";
 
@@ -71,9 +72,8 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
           </p>
         ) : (
           <p className="mt-3 text-[13px] leading-5 text-stone-300">
-            {app.ready
-              ? "App credentials are saved. Authorize WHOOP to finish."
-              : "Add the WHOOP app credentials, then authorize the account."}
+            Sign in with WHOOP, or create an account on the next screen. The
+            chat then reads recovery, sleep, and strain from that account.
           </p>
         )}
         {notice === "error" ? (
@@ -95,15 +95,25 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
               Disconnect WHOOP
             </button>
           </form>
-        ) : app.ready ? (
-          <a
-            href="/api/whoop/connect"
-            className="mt-4 inline-block text-[#0a84ff]"
-          >
-            Authorize WHOOP
+        ) : (
+          <a href="/api/whoop/connect" className={`mt-4 ${doorButton}`}>
+            Sign in with WHOOP
           </a>
+        )}
+        {whoop.status !== "ok" &&
+        app.redirectUri &&
+        !app.redirectUri.startsWith(origin) ? (
+          <p className="mt-3 text-[13px] leading-5 text-stone-400">
+            After you approve, WHOOP returns you to{" "}
+            {new URL(app.redirectUri).host}.
+          </p>
         ) : null}
-        <WhoopAppForm redirectUri={app.redirectUri ?? redirectUri} />
+        <details className="mt-4">
+          <summary className="cursor-pointer text-[13px] text-stone-400">
+            WHOOP app credentials
+          </summary>
+          <WhoopAppForm redirectUri={app.redirectUri ?? redirectUri} />
+        </details>
       </div>
     </section>
   );

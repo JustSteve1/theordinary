@@ -2,6 +2,7 @@ import { loadBee } from "@/src/platform/integrations/bee";
 import { loadWhoop } from "@/src/platform/integrations/whoop";
 import { WEEK_GOAL, scoreMembership } from "@/src/features/dashboard/score";
 import { getCurrentUser } from "@/src/platform/current-user";
+import { doorButton } from "@/src/platform/shell/door";
 import { redirect } from "next/navigation";
 
 export async function MembershipScreen() {
@@ -49,6 +50,13 @@ export async function MembershipScreen() {
             style={{ width: `${progress}%` }}
           />
         </div>
+        {whoop.status === "ok" ? (
+          <p className="mt-4 text-[13px] text-stone-300">WHOOP is connected.</p>
+        ) : (
+          <a href="/api/whoop/connect" className={`mt-6 ${doorButton}`}>
+            Sign in with WHOOP
+          </a>
+        )}
       </section>
 
       <section className="rounded-[10px] border border-white/10 p-6">

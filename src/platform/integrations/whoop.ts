@@ -42,41 +42,49 @@ export type WhoopReading = WhoopScore & {
 
 const refreshInflight = new Map<string, Promise<Connection | null>>();
 
+function whoopEnv() {
+  return {
+    clientId: process.env.WHOOP_CLIENT_ID?.trim() ?? "",
+    clientSecret: process.env.WHOOP_CLIENT_SECRET?.trim() ?? "",
+    redirectUri: process.env.WHOOP_REDIRECT_URI?.trim() ?? "",
+  };
+}
+
 export function whoopConfig(): WhoopConfig | null {
-  const clientId = process.env.WHOOP_CLIENT_ID;
-  const clientSecret = process.env.WHOOP_CLIENT_SECRET;
-  const redirectUri = process.env.WHOOP_REDIRECT_URI;
-  if (!clientId || !clientSecret || !redirectUri) {
+  const env = whoopEnv();
+  if (!env.clientId || !env.clientSecret || !env.redirectUri) {
     return null;
   }
-  return { clientId, clientSecret, redirectUri };
+  return env;
+}
+
+export async function whoopCredentials(userId: string) {
+  const saved = await readSecrets(userId, "whoop");
+  const env = whoopEnv();
+  return {
+    clientId: saved.get("client_id")?.trim() || env.clientId,
+    clientSecret: saved.get("client_secret")?.trim() || env.clientSecret,
+    redirectUri: saved.get("redirect_uri")?.trim() || env.redirectUri,
+  };
 }
 
 export async function whoopAppConfig(
   userId: string,
 ): Promise<WhoopConfig | null> {
-  const saved = await readSecrets(userId, "whoop");
-  const clientId = saved.get("client_id")?.trim();
-  const clientSecret = saved.get("client_secret")?.trim();
-  const redirectUri = saved.get("redirect_uri")?.trim();
-  if (clientId && clientSecret && redirectUri) {
-    return { clientId, clientSecret, redirectUri };
+  const creds = await whoopCredentials(userId);
+  if (!creds.clientId || !creds.clientSecret || !creds.redirectUri) {
+    return null;
   }
-  return whoopConfig();
+  return creds;
 }
 
 export async function whoopAppStatus(userId: string) {
-  const saved = await readSecrets(userId, "whoop");
-  const env = whoopConfig();
-  const clientId = saved.get("client_id")?.trim() || env?.clientId || null;
-  const clientSecret =
-    saved.get("client_secret")?.trim() || env?.clientSecret || null;
-  const redirectUri =
-    saved.get("redirect_uri")?.trim() || env?.redirectUri || null;
+  const creds = await whoopCredentials(userId);
   return {
-    ready: Boolean(clientId && clientSecret && redirectUri),
-    clientId,
-    redirectUri,
+    ready: Boolean(creds.clientId && creds.clientSecret && creds.redirectUri),
+    canAuthorize: Boolean(creds.clientId && creds.redirectUri),
+    clientId: creds.clientId || null,
+    redirectUri: creds.redirectUri || null,
   };
 }
 
@@ -84,7 +92,10 @@ export function createWhoopState() {
   return randomBytes(4).toString("hex");
 }
 
-export function whoopAuthorizeUrl(config: WhoopConfig, state: string) {
+export function whoopAuthorizeUrl(
+  config: { clientId: string; redirectUri: string },
+  state: string,
+) {
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", config.clientId);
@@ -151,11 +162,15 @@ function blankWhoop(
 }
 
 export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
-  if (!(await whoopAppConfig(userId))) {
+  const creds = await whoopCredentials(userId);
+  if (!creds.clientId || !creds.redirectUri) {
     return blankWhoop(
       "unconfigured",
       "Add the WHOOP app credentials, then connect the account.",
     );
+  }
+  if (!creds.clientSecret) {
+    return blankWhoop("disconnected", null);
   }
 
   const connection = await getConnection(userId, "whoop");

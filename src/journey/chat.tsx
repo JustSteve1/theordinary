@@ -8,6 +8,7 @@ import { loadWhoop } from "@/src/platform/integrations/whoop";
 import { NOVA_MODEL_ID } from "@/src/platform/integrations/nova";
 import { requireRecall } from "@/src/platform/recall/guard";
 import { listChat } from "@/src/platform/recall/store";
+import { doorButton } from "@/src/platform/shell/door";
 import { sectionLabel } from "@/src/platform/shell/ui";
 
 export const metadata: Metadata = { title: "Chat" };
@@ -50,17 +51,22 @@ export default async function ChatScreen() {
               </li>
             ))}
           </ul>
-        ) : whoop.status === "unconfigured" || whoop.status === "error" ? (
-          <p className="mt-4 text-[13px] leading-5 text-stone-400">
-            {whoop.message ?? "WHOOP could not be read."}
-          </p>
         ) : (
-          <a
-            href="/api/whoop/connect"
-            className="mt-4 inline-block text-[#0a84ff]"
-          >
-            Connect WHOOP
-          </a>
+          <>
+            {whoop.message ? (
+              <p className="mt-4 text-[13px] leading-5 text-stone-400">
+                {whoop.message}
+              </p>
+            ) : (
+              <p className="mt-4 text-[13px] leading-5 text-stone-400">
+                Sign in with WHOOP so answers can use your recovery, sleep, and
+                strain.
+              </p>
+            )}
+            <a href="/api/whoop/connect" className={`mt-4 ${doorButton}`}>
+              Sign in with WHOOP
+            </a>
+          </>
         )}
       </section>
       <div className="mt-6 rounded-[10px] border border-white/10 p-6">
