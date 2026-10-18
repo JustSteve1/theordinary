@@ -33,7 +33,7 @@ type SpeechEvent = {
 
 function emptyReason(problem: string | null) {
   if (problem === "unsupported") {
-    return "This browser can't write down speech. Chrome can.";
+    return "This browser can't write down speech. Use Safari on iPhone, or Chrome on a computer.";
   }
   if (problem === "not-allowed" || problem === "service-not-allowed") {
     return "Allow the microphone for this site, then hold to talk again.";
@@ -96,6 +96,7 @@ export function TalkSession({
   const speechProblem = useRef<string | null>(null);
   const endWait = useRef<(() => void) | null>(null);
   const release = useRef<(() => void) | null>(null);
+  const interrupted = useRef(false);
 
   function remember() {
     const answers = Object.values(buckets.current.answers).join(" ");
@@ -180,6 +181,7 @@ export function TalkSession({
     setStatus(null);
     setHeard("");
     speechProblem.current = null;
+    interrupted.current = false;
     buckets.current = { narrative: "", answers: {} };
     interim.current = "";
     active.current = "narrative";
@@ -219,22 +221,38 @@ export function TalkSession({
     }
 
     const onRelease = () => void stop();
-    release.current = onRelease;
+    const onInterrupt = () => {
+      interrupted.current = true;
+      void stop();
+    };
+    release.current = () => {
+      window.removeEventListener("pointerup", onRelease);
+      window.removeEventListener("touchend", onRelease);
+      window.removeEventListener("pointercancel", onInterrupt);
+      window.removeEventListener("touchcancel", onInterrupt);
+    };
     window.addEventListener("pointerup", onRelease);
     window.addEventListener("touchend", onRelease);
-    void openMicrophone();
+    window.addEventListener("pointercancel", onInterrupt);
+    window.addEventListener("touchcancel", onInterrupt);
+    if (!rec) {
+      void openMicrophone();
+    }
     if (probes.length > 0) {
       later(8000, () => showProbe(0));
     }
   }
 
+  /**
+   * Speech-to-text opens the microphone itself. A second audio stream on
+   * iPhone cuts that off, so the plain stream is only used to explain a
+   * missing microphone when speech-to-text is unavailable.
+   */
   async function openMicrophone() {
     try {
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      if (!recRef.current) {
-        speechProblem.current = "audio-capture";
-      }
+      speechProblem.current = "audio-capture";
     }
   }
 
@@ -244,11 +262,8 @@ export function TalkSession({
     }
     holdingRef.current = false;
     setHolding(false);
-    if (release.current) {
-      window.removeEventListener("pointerup", release.current);
-      window.removeEventListener("touchend", release.current);
-      release.current = null;
-    }
+    release.current?.();
+    release.current = null;
     clearTimers();
     setQuestion(null);
     const rec = recRef.current;
@@ -278,9 +293,15 @@ export function TalkSession({
       answer: buckets.current.answers[probe.id] ?? "",
     }));
     if (!narrative && answers.every((item) => !item.answer)) {
-      setError(emptyReason(speechProblem.current));
+      setError(
+        interrupted.current
+          ? "That hold was interrupted, usually by the microphone prompt. Hold to talk again."
+          : emptyReason(speechProblem.current),
+      );
+      interrupted.current = false;
       return;
     }
+    interrupted.current = false;
 
     saving.current = true;
     setStatus("Saving");
