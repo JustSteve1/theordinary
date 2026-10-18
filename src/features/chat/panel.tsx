@@ -41,7 +41,7 @@ export function ChatPanel({
       <div className="space-y-4">
         {messages.length === 0 ? (
           <p className="text-[13px] leading-5 text-stone-400">
-            Ask about a check-in question, a talk, Bee, or WHOOP.
+            Ask about a talk, Bee, or WHOOP.
           </p>
         ) : (
           messages.map((message) => (

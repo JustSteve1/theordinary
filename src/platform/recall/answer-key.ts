@@ -66,21 +66,6 @@ const STOP = new Set([
   "your",
 ]);
 
-const FIXTURE: AnswerFact[] = [
-  {
-    id: "fixture-dinner",
-    kind: "meal",
-    question: "What did you eat for dinner last night?",
-    terms: ["pasta", "salad", "soup"],
-  },
-  {
-    id: "fixture-place",
-    kind: "place",
-    question: "Where were you this time last week?",
-    terms: ["office", "home", "kitchen"],
-  },
-];
-
 export function keywords(text: string) {
   const seen = new Set<string>();
   const words: string[] = [];
@@ -125,7 +110,6 @@ export function buildAnswerKey(input: {
   bee: BeeSnapshot;
   narratives: { id: string; narrative: string }[];
   now?: number;
-  allowFixture: boolean;
 }): AnswerFact[] {
   const now = input.now ?? Date.now();
   const facts: AnswerFact[] = [];
@@ -181,12 +165,7 @@ export function buildAnswerKey(input: {
     }
   }
 
-  const fromBee = facts.some((fact) => fact.id.startsWith("bee-"));
-  const source =
-    !fromBee && input.allowFixture
-      ? [...FIXTURE, ...facts.filter((fact) => fact.id.startsWith("prior-"))]
-      : facts;
-  const visible = source
+  return facts
     .map((fact) => {
       const question = fact.question.toLowerCase();
       return {
@@ -196,10 +175,6 @@ export function buildAnswerKey(input: {
     })
     .filter((fact) => fact.terms.length > 0)
     .slice(0, 3);
-  if (visible.length > 0 || !input.allowFixture) {
-    return visible;
-  }
-  return FIXTURE;
 }
 
 export function clientProbes(facts: AnswerFact[]): ClientProbe[] {

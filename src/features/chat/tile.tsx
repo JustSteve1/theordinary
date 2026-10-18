@@ -10,7 +10,7 @@ export function ChatTile() {
       <h2 className="mt-3 text-[28px] font-medium tracking-tight">Nova Lite</h2>
       <p className="mt-2 text-[13px] leading-5 text-stone-400">{NOVA_MODEL_ID}</p>
       <p className="mt-4 text-[13px] leading-5 text-stone-400">
-        The same record as Hello World. Talks, the check-in questions, Bee, and WHOOP.
+        Talks, Bee, and WHOOP. Each source can be swapped without changing this tile.
       </p>
       <p className="mt-4">
         <Link href="/app/chat" className="text-[#0a84ff]">
