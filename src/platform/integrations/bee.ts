@@ -1,6 +1,7 @@
 import http from "node:http";
 import https from "node:https";
 
+import { beeRootCa } from "@/src/platform/integrations/bee-ca";
 import { readSecret } from "@/src/platform/integrations/secrets";
 
 export type BeeSnapshot = {
@@ -169,6 +170,7 @@ async function beeGet(
           ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
         timeout: 8000,
+        ...(target.hostname.endsWith("bee.amazon.dev") ? { ca: beeRootCa } : {}),
       },
       (response) => {
         const chunks: Buffer[] = [];
