@@ -217,7 +217,7 @@ export async function logIn(
     if (sessionError) {
       return { error: sessionError };
     }
-    redirect(pathForStep(profile.step));
+    redirect("/home");
   } catch (error) {
     if (isRedirectError(error)) {
       throw error;

@@ -129,7 +129,7 @@ export async function middleware(request: NextRequest) {
       }
       return continueWithPath(request);
     }
-    if (session.step !== "done") {
+    if (session.step !== "done" && pathname !== "/home") {
       return NextResponse.redirect(
         new URL(pathForStep(session.step), request.url),
       );
