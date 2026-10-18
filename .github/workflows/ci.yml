@@ -23,6 +23,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Session record contract
+        run: python3 -m unittest test_log_session.py
+        working-directory: skills/episodic-recall
+
       - name: Lint
         run: pnpm lint
 

@@ -243,8 +243,8 @@ export function latestBeeDay(bee: BeeSnapshot, now = Date.now()) {
 }
 
 /**
- * Scores a talk. The record future days keep is written by
- * skills/episodic-recall/log_session.py, which drops the words.
+ * Scores a talk. The record future days keep is written by logSession,
+ * using the same rules as skills/episodic-recall/log_session.py.
  */
 export function assessTalk(input: {
   id: string;

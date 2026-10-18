@@ -1,27 +1,32 @@
-import { spawn } from "node:child_process";
-import path from "node:path";
+import type { SessionRecord } from "@/src/platform/recall/types";
+import { cleanSessions, trendFor } from "@/src/platform/recall/trend";
 
-import type { SessionRecord, TrendFlag } from "@/src/platform/recall/types";
-
-const SCRIPT = path.join(
-  process.cwd(),
-  "skills",
-  "episodic-recall",
-  "log_session.py",
-);
-
-const FLAGS = new Set<TrendFlag>([
-  "insufficient_baseline",
-  "within_range",
-  "above_range",
-  "below_range",
-  "review_suggested",
+const FORBIDDEN = new Set([
+  "narrative",
+  "transcript",
+  "answer",
+  "answers",
+  "question",
+  "questions",
+  "terms",
+  "term",
+  "speech",
+  "words",
+  "summary",
+  "fact",
+  "facts",
+  "todo",
+  "todos",
+  "email",
+  "prompt",
+  "utterance",
+  "dialogue",
 ]);
 
 /**
- * Ask the episodic-recall skill to log one session.
- * The script rebuilds the trend and returns the record future days may keep.
- * Spoken words are not part of this call.
+ * Log one episodic-recall session in process.
+ * Same record as skills/episodic-recall/log_session.py: scores, confounders,
+ * and the personal trend. Spoken words are refused. Vercel runs this path.
  */
 export async function logSession(input: {
   id: string;
@@ -36,121 +41,78 @@ export async function logSession(input: {
   confounders: SessionRecord["confounders"];
   prior: SessionRecord[];
 }): Promise<SessionRecord> {
-  const payload = {
+  refuseWords(input);
+  if (!/^[0-9a-f-]{36}$/i.test(input.id)) {
+    throw new Error("Session record refused.");
+  }
+  if (!input.recordedAt.includes("T")) {
+    throw new Error("Session record refused.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+    throw new Error("Session record refused.");
+  }
+  if (!/^[a-z_]{1,32}$/.test(input.window)) {
+    throw new Error("Session record refused.");
+  }
+  for (const value of [
+    input.composite,
+    input.coreRecall,
+    input.detailRecall,
+    input.intrusionRate,
+  ]) {
+    if (value !== null && !Number.isFinite(value)) {
+      throw new Error("Session record refused.");
+    }
+  }
+
+  const trend =
+    input.aborted || input.composite === null
+      ? blankTrend(input.prior)
+      : trendFor(input.prior, input.composite);
+
+  return {
     id: input.id,
-    recorded_at: input.recordedAt,
+    recordedAt: input.recordedAt,
     date: input.date,
     window: input.window,
     aborted: input.aborted,
     composite: input.composite,
-    core_recall: input.coreRecall,
-    detail_recall: input.detailRecall,
-    intrusion_rate: input.intrusionRate,
-    confounders: {
-      poor_sleep: input.confounders.poorSleep,
-      unwell_or_alcohol: input.confounders.unwellOrAlcohol,
-    },
-    prior: input.prior.map(toSkillSession),
+    coreRecall: input.coreRecall,
+    detailRecall: input.detailRecall,
+    intrusionRate: input.intrusionRate,
+    confounders: input.confounders,
+    trend,
   };
-
-  const stdout = await runSkill(JSON.stringify(payload));
-  return fromSkillSession(JSON.parse(stdout) as SkillSession);
 }
 
-type SkillSession = {
-  id: string;
-  recorded_at: string;
-  date: string;
-  window: string;
-  aborted: boolean;
-  composite: number | null;
-  core_recall: number | null;
-  detail_recall: number | null;
-  intrusion_rate: number | null;
-  confounders: { poor_sleep: boolean; unwell_or_alcohol: boolean };
-  trend: {
-    n_prior: number;
-    n_prior_clean: number;
-    baseline_mean: number | null;
-    baseline_sd: number | null;
-    z: number | null;
-    flag: string;
-  };
-};
-
-function toSkillSession(session: SessionRecord) {
+function blankTrend(prior: SessionRecord[]): SessionRecord["trend"] {
+  const completed = prior.filter(
+    (session) => !session.aborted && session.composite !== null,
+  );
   return {
-    aborted: session.aborted,
-    composite: session.composite,
-    confounders: {
-      poor_sleep: session.confounders.poorSleep,
-      unwell_or_alcohol: session.confounders.unwellOrAlcohol,
-    },
-    trend: {
-      n_prior: session.trend.nPrior,
-      n_prior_clean: session.trend.nPriorClean,
-      baseline_mean: session.trend.baselineMean,
-      baseline_sd: session.trend.baselineSd,
-      z: session.trend.z,
-      flag: session.trend.flag,
-    },
+    nPrior: completed.length,
+    nPriorClean: cleanSessions(prior).length,
+    baselineMean: null,
+    baselineSd: null,
+    z: null,
+    flag: "insufficient_baseline",
   };
 }
 
-function fromSkillSession(session: SkillSession): SessionRecord {
-  if (!FLAGS.has(session.trend.flag as TrendFlag)) {
-    throw new Error("Session record refused.");
+function refuseWords(value: unknown) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      refuseWords(item);
+    }
+    return;
   }
-  return {
-    id: session.id,
-    recordedAt: session.recorded_at,
-    date: session.date,
-    window: session.window,
-    aborted: session.aborted,
-    composite: session.composite,
-    coreRecall: session.core_recall,
-    detailRecall: session.detail_recall,
-    intrusionRate: session.intrusion_rate,
-    confounders: {
-      poorSleep: session.confounders.poor_sleep,
-      unwellOrAlcohol: session.confounders.unwell_or_alcohol,
-    },
-    trend: {
-      nPrior: session.trend.n_prior,
-      nPriorClean: session.trend.n_prior_clean,
-      baselineMean: session.trend.baseline_mean,
-      baselineSd: session.trend.baseline_sd,
-      z: session.trend.z,
-      flag: session.trend.flag as TrendFlag,
-    },
-  };
-}
-
-function runSkill(body: string) {
-  return new Promise<string>((resolve, reject) => {
-    const child = spawn("python3", [SCRIPT], { stdio: ["pipe", "pipe", "pipe"] });
-    const out: Buffer[] = [];
-    const err: Buffer[] = [];
-    const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error("Session record refused."));
-    }, 5000);
-    child.stdout.on("data", (chunk: Buffer) => out.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
-    child.on("error", () => {
-      clearTimeout(timer);
-      reject(new Error("Session record refused."));
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) {
-        reject(new Error("Session record refused."));
-        return;
-      }
-      resolve(Buffer.concat(out).toString("utf8"));
-    });
-    child.stdin.write(body);
-    child.stdin.end();
-    void err;
-  });
+  if (!value || typeof value !== "object") {
+    return;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (FORBIDDEN.has(key.toLowerCase())) {
+      throw new Error("Session record refused.");
+    }
+    refuseWords(item);
+  }
 }
