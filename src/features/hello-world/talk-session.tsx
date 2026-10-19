@@ -378,7 +378,7 @@ export function TalkSession({
           holding ? "border-[#0a84ff]" : "border-white/15"
         }`}
         aria-pressed={holding}
-        aria-label={holding ? `${label}. Tap to finish` : "Tap to talk about your day"}
+        aria-label={holding ? `${label}. Tap to finish talking` : "Tap to talk about your day"}
         disabled={status === "Saving"}
         onContextMenu={(event) => event.preventDefault()}
         onPointerDown={(event) => {

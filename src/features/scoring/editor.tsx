@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { saveScoreItems } from "@/src/features/scoring/actions";
@@ -15,10 +15,13 @@ export function ScoresEditor({
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(items);
-  const [label, setLabel] = useState("");
-  const [words, setWords] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   async function persist(next: RubricItem[]) {
     setPending(true);
@@ -27,14 +30,15 @@ export function ScoresEditor({
     setPending(false);
     if (result.error) {
       setError(result.error);
-      return;
+      return false;
     }
     setDraft(next);
     router.refresh();
+    return true;
   }
 
   return (
-    <div className="mt-4">
+    <div className="mt-4" data-scores-ready={ready ? "true" : "false"}>
       <pre className="overflow-x-auto whitespace-pre-wrap break-words text-stone-100">
         {JSON.stringify(
           (scores ?? []).map((item) => ({
@@ -53,7 +57,7 @@ export function ScoresEditor({
               <input
                 aria-label={`Name for ${item.label}`}
                 defaultValue={item.label}
-                disabled={pending}
+                disabled={pending || !ready}
                 onBlur={(event) => {
                   const nextLabel = event.target.value.trim();
                   if (!nextLabel || nextLabel === item.label) {
@@ -71,7 +75,7 @@ export function ScoresEditor({
               <button
                 type="button"
                 className="min-h-11 shrink-0 text-[#0a84ff]"
-                disabled={pending}
+                disabled={pending || !ready}
                 onClick={() => void persist(draft.filter((row) => row.id !== item.id))}
               >
                 Remove
@@ -83,42 +87,54 @@ export function ScoresEditor({
           </li>
         ))}
       </ul>
-      <form
-        className="mt-4 space-y-3 border-t border-white/10 pt-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const nextLabel = label.trim();
-          if (!nextLabel || pending) {
-            return;
-          }
-          const id = `custom-${crypto.randomUUID().slice(0, 8)}`;
-          const terms = words
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((word) => word.length >= 4);
-          setLabel("");
-          setWords("");
-          void persist([...draft, { id, label: nextLabel, terms }]);
-        }}
-      >
+      <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
         <input
+          name="label"
           aria-label="New score item"
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
           placeholder="New item"
           className="h-11 w-full rounded-[10px] border border-white/15 bg-transparent px-3 text-stone-100 outline-none focus:border-[#0a84ff]"
         />
         <input
+          name="words"
           aria-label="Words for the new score item"
-          value={words}
-          onChange={(event) => setWords(event.target.value)}
           placeholder="Words, separated by commas"
           className="h-11 w-full rounded-[10px] border border-white/15 bg-transparent px-3 text-stone-100 outline-none focus:border-[#0a84ff]"
         />
-        <button type="submit" className="min-h-11 text-[#0a84ff]" disabled={pending}>
+        <button
+          type="button"
+          aria-label="Add score item"
+          className="min-h-11 text-[#0a84ff]"
+          disabled={pending || !ready}
+          onClick={(event) => {
+            const root = event.currentTarget.parentElement;
+            const nextLabel = (
+              root?.querySelector('input[name="label"]') as HTMLInputElement | null
+            )?.value.trim() ?? "";
+            const nextWords =
+              (root?.querySelector('input[name="words"]') as HTMLInputElement | null)?.value ??
+              "";
+            if (!nextLabel || pending) {
+              return;
+            }
+            const id = `custom-${crypto.randomUUID().slice(0, 8)}`;
+            const terms = nextWords
+              .toLowerCase()
+              .split(/[^a-z0-9]+/)
+              .filter((word) => word.length >= 4);
+            const labelInput = root?.querySelector('input[name="label"]') as HTMLInputElement | null;
+            const wordsInput = root?.querySelector('input[name="words"]') as HTMLInputElement | null;
+            if (labelInput) {
+              labelInput.value = "";
+            }
+            if (wordsInput) {
+              wordsInput.value = "";
+            }
+            void persist([...draft, { id, label: nextLabel, terms }]);
+          }}
+        >
           Add
         </button>
-      </form>
+      </div>
       {error ? (
         <p className="mt-3 text-[#ffb4ab]" role="alert">
           {error}
