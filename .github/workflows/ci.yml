@@ -27,6 +27,9 @@ jobs:
         run: python3 -m unittest test_log_session.py
         working-directory: skills/episodic-recall
 
+      - name: Scoring tests
+        run: pnpm test:scoring
+
       - name: Lint
         run: pnpm lint
 
