@@ -125,6 +125,39 @@ create table if not exists recall_rubric (
   items jsonb not null,
   updated_at timestamptz not null default now()
 );
+
+alter table recall_sessions add column if not exists practice boolean not null default false;
+
+create table if not exists checkins (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  session_id uuid references recall_sessions (id) on delete set null,
+  recorded_at timestamptz not null,
+  target_date date,
+  talk_text text not null,
+  input_mode text not null default 'voice',
+  asr_confidence double precision,
+  probes jsonb not null default '[]',
+  bee_snapshot jsonb not null default '[]',
+  v1_facts jsonb not null default '[]',
+  rubric_snapshot jsonb not null default '[]',
+  flow_items jsonb,
+  prior_non_empty integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists score_runs (
+  id uuid primary key,
+  checkin_id uuid not null references checkins (id) on delete cascade,
+  scorer_version text not null,
+  config_hash text not null,
+  matcher_tier text not null,
+  model_id text,
+  prompt_version text,
+  computed_at timestamptz not null default now(),
+  payload jsonb not null,
+  unique (checkin_id, scorer_version, config_hash)
+);
 `;
 
 function databaseUrl() {

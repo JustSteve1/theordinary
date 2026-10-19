@@ -1,0 +1,225 @@
+{
+  "_notes": "Config for The Ordinary recall scorer v2. See scoring-methodology-v2.md. All word lists are stemmed with Porter2 at load time. Any change here produces a new config_hash and new score runs; logic changes bump scorer_version.",
+  "scorer_version": "2.0.0",
+  "config_version": "2026-10-19",
+  "pinned_libraries": {
+    "_notes": "Pin exact installed versions; they are part of config_hash.",
+    "compromise": "14.19.0",
+    "stemmer": "snowball-stemmers@0.6.0"
+  },
+
+  "tokenise": {
+    "min_token_length": 3,
+    "entities_exempt_from_min_length": true,
+    "split_pattern": "[^\\p{L}\\p{N}']+",
+    "stem": "porter2",
+    "fact_key_max_keywords": 8
+  },
+
+  "stopwords": [
+    "a", "about", "above", "after", "again", "against", "all", "also", "am", "an", "and", "any", "anything",
+    "are", "around", "as", "at", "back", "be", "because", "been", "before", "being", "below", "between",
+    "bit", "both", "but", "by", "came", "can", "can't", "cannot", "come", "could", "day", "did", "didn't",
+    "do", "does", "doing", "don't", "down", "during", "each", "else", "even", "ever", "few", "for", "from",
+    "further", "get", "getting", "go", "going", "gone", "good", "got", "great", "had", "has", "have",
+    "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how", "i", "i'm", "i've",
+    "if", "in", "into", "is", "it", "it's", "its", "itself", "just", "last", "lot", "made", "make", "me",
+    "more", "most", "much", "my", "myself", "new", "nice", "night", "no", "nor", "not", "now", "of", "off",
+    "ok", "okay", "on", "once", "one", "only", "or", "other", "our", "ours", "ourselves", "out", "over",
+    "own", "pretty", "quite", "really", "same", "saw", "see", "she", "should", "so", "some", "something",
+    "still", "such", "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there",
+    "these", "they", "thing", "things", "think", "this", "those", "through", "time", "to", "today", "too",
+    "under", "until", "up", "very", "was", "way", "we", "well", "went", "were", "what", "when", "where",
+    "which", "while", "who", "whom", "why", "will", "with", "would", "yeah", "yes", "yesterday", "you",
+    "your", "yours"
+  ],
+
+  "segmentation": {
+    "sentence_delimiters": [".", "!", "?", "\n"],
+    "clause_boundaries": [", and", ", but", ", so", ";", " but ", " so ", " then ", " and then "],
+    "and_split": {
+      "_notes": "Split on a bare ' and ' only when the next word is a subject pronoun and the left side has at least min_left_tokens tokens.",
+      "subject_pronouns": ["i", "we", "he", "she", "they", "you"],
+      "min_left_tokens": 3
+    }
+  },
+
+  "markers": {
+    "abstention": [
+      "can't remember", "cant remember", "cannot remember", "can not remember",
+      "don't remember", "dont remember", "do not remember",
+      "can't recall", "cannot recall", "don't recall", "do not recall",
+      "don't know", "dont know", "do not know", "no idea", "not sure",
+      "i forget", "i forgot", "i've forgotten", "no memory", "drawing a blank", "mind is blank"
+    ],
+    "negation": [
+      "not", "no", "never", "didn't", "didnt", "don't", "dont", "doesn't", "wasn't", "weren't",
+      "haven't", "hadn't", "won't", "couldn't", "nothing", "nobody", "neither", "nor"
+    ],
+    "negation_window_tokens": 3,
+    "habitual": [
+      "usually", "always", "normally", "typically", "generally", "often", "every",
+      "tend", "tends", "tended", "whenever", "regularly"
+    ],
+    "meta_tokens": [
+      "anyway", "basically", "honestly", "whatever", "guess", "mean", "know", "kind", "sort",
+      "like", "um", "umm", "erm", "hmm"
+    ],
+    "repetition_jaccard": 0.8,
+    "time_words_not_entities": [
+      "january", "february", "march", "april", "may", "june", "july", "august", "september",
+      "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday",
+      "saturday", "sunday"
+    ]
+  },
+
+  "dimensions": {
+    "people": {
+      "label": "People",
+      "generic_terms": [
+        "people", "person", "friend", "friends", "family", "someone", "colleague", "colleagues",
+        "partner", "neighbour", "neighbours", "neighbor", "mum", "mom", "dad", "mother", "father",
+        "sister", "brother", "wife", "husband", "boyfriend", "girlfriend", "kids", "children", "son",
+        "daughter", "boss", "team", "mate", "mates", "guests", "everyone", "flatmate", "housemate"
+      ],
+      "possessives": ["my", "our", "his", "her", "their"],
+      "relation_nouns": [
+        "mum", "mom", "dad", "mother", "father", "sister", "brother", "wife", "husband", "partner",
+        "boyfriend", "girlfriend", "son", "daughter", "kids", "children", "boss", "manager",
+        "colleague", "colleagues", "friend", "friends", "neighbour", "flatmate", "housemate", "team",
+        "grandma", "grandad", "nan", "aunt", "uncle", "cousin"
+      ],
+      "specific_rules": ["person_entity", "possessive_relation"],
+      "verify_with_fact_kinds": ["event", "person"]
+    },
+    "places": {
+      "label": "Places",
+      "generic_terms": [
+        "place", "places", "home", "house", "flat", "apartment", "office", "work", "street", "kitchen",
+        "outside", "garden", "park", "restaurant", "pub", "bar", "cafe", "shop", "gym", "station",
+        "room", "bedroom", "beach", "town", "city"
+      ],
+      "possessives": ["my", "our", "his", "her", "their"],
+      "place_nouns": [
+        "home", "house", "flat", "apartment", "office", "kitchen", "garden", "room", "bedroom",
+        "street", "local", "car"
+      ],
+      "specific_rules": ["place_or_org_entity", "possessive_place"],
+      "verify_with_fact_kinds": ["place", "event"]
+    },
+    "conversations": {
+      "label": "Conversations",
+      "generic_terms": [
+        "talk", "talked", "talking", "conversation", "chat", "chatted", "said", "say", "told", "tell",
+        "asked", "ask", "spoke", "speak", "speaking", "discussed", "discuss", "mentioned", "called",
+        "texted", "messaged"
+      ],
+      "min_topic_tokens": 2,
+      "specific_rules": ["trigger_with_topic"],
+      "verify_with_fact_kinds": ["event", "conversation"]
+    },
+    "decisions": {
+      "label": "Decisions",
+      "generic_terms": [
+        "decide", "decided", "decision", "agree", "agreed", "plan", "plans", "planned", "choice",
+        "chose", "chosen", "booked", "book", "settled", "committed"
+      ],
+      "min_object_tokens": 2,
+      "specific_rules": ["trigger_with_object"],
+      "verify_with_fact_kinds": ["event", "decision"]
+    }
+  },
+
+  "custom_items": {
+    "scoring": "binary",
+    "min_term_length": 3,
+    "max_term_length": 40,
+    "applies_from": "next_recording",
+    "included_in_richness": false
+  },
+
+  "facts": {
+    "kind_family": {
+      "place": "core",
+      "event": "core",
+      "person": "core",
+      "meal": "detail",
+      "conversation": null,
+      "decision": null
+    },
+    "lexical": {
+      "full_if_distinctive_overlap": 1,
+      "full_if_any_overlap": 2,
+      "partial_score": 0.5
+    },
+    "semantic": {
+      "_notes": "Off until a hand-label study calibrates it. Evidence must be a substring of the clause.",
+      "enabled": false,
+      "judge_prompt_version": "fact-judge-1",
+      "temperature": 0,
+      "require_evidence_substring": true,
+      "embedding_full_threshold": null,
+      "embedding_partial_threshold": null
+    }
+  },
+
+  "probes": {
+    "enabled": true,
+    "max_true": 2,
+    "max_lures": 1,
+    "true_probe_min_key_stems": 2,
+    "lure_min_days_apart": 7,
+    "lure_max_similarity": 0.2,
+    "ask_after_free_recall": true
+  },
+
+  "accuracy": {
+    "intrusion_weight": 0.5,
+    "null_when_no_bee_facts": true,
+    "recall_uses_free_recall_only": true
+  },
+
+  "richness": {
+    "weight_dimensions": 0.6,
+    "weight_density": 0.4,
+    "density_target_details": 6,
+    "dimensions_included": ["people", "places", "conversations", "decisions"]
+  },
+
+  "conditions": {
+    "practice_checkins": 3,
+    "low_asr_confidence": 0.6,
+    "lag_bands": [
+      { "key": "same_or_next", "min_days": 0, "max_days": 1 },
+      { "key": "week", "min_days": 2, "max_days": 7 },
+      { "key": "fortnight", "min_days": 8, "max_days": 21 },
+      { "key": "remote", "min_days": 22, "max_days": null }
+    ]
+  },
+
+  "trend": {
+    "half_life_checkins": 7,
+    "prior_recall": { "alpha": 2, "beta": 2 },
+    "prior_intrusion": { "alpha": 1, "beta": 9 },
+    "band_quantiles": [0.1, 0.9],
+    "richness_band_z": 1.28,
+    "mc_draws": 2000,
+    "seed": 42,
+    "baseline_checkins": 5,
+    "dprime_window": 10,
+    "dprime_min_true_probes": 4,
+    "dprime_min_lures": 2,
+    "dprime_correction": "log_linear"
+  },
+
+  "reliability_targets": {
+    "dimension_weighted_kappa": 0.6,
+    "fact_hit_kappa": 0.7,
+    "split_half_spearman_brown": 0.7,
+    "test_retest_icc_2_1": 0.7,
+    "max_floor_share": 0.15,
+    "max_ceiling_share": 0.15,
+    "hand_label_sample": 40,
+    "retest_members": 20
+  }
+}
