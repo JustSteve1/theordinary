@@ -101,7 +101,7 @@ export function cleanRubric(value: unknown): RubricItem[] | null {
     const terms = Array.isArray(row.terms)
       ? row.terms
           .map((term) => (typeof term === "string" ? term.toLowerCase().trim() : ""))
-          .filter((term) => /^[a-z0-9]{4,40}$/.test(term))
+          .filter((term) => /^[a-z0-9]{3,40}$/.test(term))
           .slice(0, 12)
       : [];
     items.push({ id, label, terms });

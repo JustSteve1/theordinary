@@ -87,7 +87,7 @@ export async function logSession(input: {
 
 function blankTrend(prior: SessionRecord[]): SessionRecord["trend"] {
   const completed = prior.filter(
-    (session) => !session.aborted && session.composite !== null,
+    (session) => !session.aborted && !session.practice && session.composite !== null,
   );
   return {
     nPrior: completed.length,

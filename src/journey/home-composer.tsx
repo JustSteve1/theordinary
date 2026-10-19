@@ -1,7 +1,7 @@
 "use client";
 
 import { HomeCard, type LaunchMap } from "@/src/features/hello-world/home-card";
-import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
+import type { FinishResult, TalkPayload } from "@/src/features/hello-world/talk-payload";
 import { HealthForm } from "@/src/features/onboarding/health-form";
 import type { TalkScript } from "@/src/platform/recall/probe-timing";
 import type { HomeStateId } from "@/src/platform/recall/types";
@@ -23,7 +23,7 @@ export function HomeComposer({
   neededToday: boolean;
   lastShort: boolean;
   launches: LaunchMap;
-  finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
+  finishTalk: (payload: TalkPayload) => Promise<FinishResult>;
 }) {
   return (
     <HomeCard

@@ -462,7 +462,7 @@ export async function listSessions(userId: string): Promise<SessionRecord[]> {
   await ready();
   const rows = await db()`
     select
-      id, recorded_at, session_date, day_window, aborted, composite,
+      id, recorded_at, session_date, day_window, aborted, practice, composite,
       core_recall, detail_recall, intrusion_rate, poor_sleep, unwell_or_alcohol,
       n_prior, n_prior_clean, baseline_mean, baseline_sd, z_score, trend_flag
     from recall_sessions
@@ -492,7 +492,7 @@ export async function insertSession(
       id, user_id, recorded_at, session_date, day_window, aborted, composite,
       core_recall, detail_recall, intrusion_rate, poor_sleep, unwell_or_alcohol,
       n_prior, n_prior_clean, baseline_mean, baseline_sd, z_score, trend_flag,
-      duration_ms, short, opener_id, follow_up_id, item_scores
+      duration_ms, short, opener_id, follow_up_id, item_scores, practice
     )
     values (
       ${session.id},
@@ -517,7 +517,8 @@ export async function insertSession(
       ${detail?.short ?? false},
       ${detail?.openerId ?? null},
       ${detail?.followUpId ?? null},
-      ${scores}
+      ${scores},
+      ${session.practice ?? false}
     )
   `;
 }
@@ -682,6 +683,7 @@ function mapSession(row: Record<string, unknown>): SessionRecord {
     date: dateText,
     window: String(row.day_window),
     aborted: Boolean(row.aborted),
+    practice: Boolean(row.practice),
     composite: numberOrNull(row.composite),
     coreRecall: numberOrNull(row.core_recall),
     detailRecall: numberOrNull(row.detail_recall),

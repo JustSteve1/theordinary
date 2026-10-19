@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
+import type { FinishResult, TalkPayload } from "@/src/features/hello-world/talk-payload";
 import { TalkSession } from "@/src/features/hello-world/talk-session";
 import { Button, ButtonLink, sectionLabel } from "@/src/platform/shell/ui";
 import { copy } from "@/src/platform/recall/copy";
@@ -50,7 +50,7 @@ export function HomeCard({
   lastShort: boolean;
   launches: LaunchMap;
   consent: React.ReactNode;
-  finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
+  finishTalk: (payload: TalkPayload) => Promise<FinishResult>;
 }) {
   const canTalk = state !== "needs_consent" && state !== "mic_blocked";
 

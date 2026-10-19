@@ -18,6 +18,7 @@ export function cleanSessions(sessions: SessionRecord[]) {
   return sessions.filter(
     (session) =>
       !session.aborted &&
+      !session.practice &&
       session.composite !== null &&
       !session.confounders.poorSleep &&
       !session.confounders.unwellOrAlcohol,
@@ -29,7 +30,7 @@ export function trendFor(
   composite: number,
 ): SessionRecord["trend"] {
   const completed = prior.filter(
-    (session) => !session.aborted && session.composite !== null,
+    (session) => !session.aborted && !session.practice && session.composite !== null,
   );
   const clean = cleanSessions(prior);
   const baseline = clean.slice(-recallDefaults.minBaseline);

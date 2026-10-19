@@ -11,6 +11,7 @@ export type SessionRecord = {
   date: string;
   window: string;
   aborted: boolean;
+  practice?: boolean;
   composite: number | null;
   coreRecall: number | null;
   detailRecall: number | null;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
+import type { FinishResult, ProbePrompt, ProbeReply, TalkPayload } from "@/src/features/hello-world/talk-payload";
 import { copy } from "@/src/platform/recall/copy";
 import {
   handlingMatch,
@@ -74,10 +74,13 @@ export function TalkSession({
   finishTalk,
 }: {
   script: TalkScript;
-  finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
+  finishTalk: (payload: TalkPayload) => Promise<FinishResult>;
 }) {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
+  const [probes, setProbes] = useState<ProbePrompt[] | null>(null);
+  const [choices, setChoices] = useState<Record<string, ProbeReply["answer"]>>({});
+  const pendingTalk = useRef<TalkPayload | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [cue, setCue] = useState<ProbeLine | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -307,7 +310,7 @@ export function TalkSession({
       return;
     }
 
-    const result = await finishTalk({
+    const payload: TalkPayload = {
       narrative,
       turns,
       durationMs,
@@ -315,6 +318,41 @@ export function TalkSession({
       followUpId: script.followUpId,
       poorSleep,
       unwell,
+    };
+    const result = await finishTalk(payload);
+    saving.current = false;
+    if (result.error) {
+      setStatus(null);
+      setError(result.error);
+      return;
+    }
+    if (result.probes?.length && result.draftId) {
+      pendingTalk.current = { ...payload, draftId: result.draftId };
+      setChoices({});
+      setProbes(result.probes);
+      setStatus(null);
+      return;
+    }
+    setProbes(null);
+    setStatus("Saved. The score is on the dashboard.");
+    router.refresh();
+  }
+
+  async function saveProbes() {
+    const pending = pendingTalk.current;
+    const questions = probes ?? [];
+    if (!pending || questions.some((probe) => !choices[probe.id]) || saving.current) {
+      return;
+    }
+    saving.current = true;
+    setStatus("Saving");
+    setError(null);
+    const result = await finishTalk({
+      ...pending,
+      probeAnswers: questions.map((probe) => ({
+        id: probe.id,
+        answer: choices[probe.id] ?? "dont_know",
+      })),
     });
     saving.current = false;
     if (result.error) {
@@ -322,6 +360,13 @@ export function TalkSession({
       setError(result.error);
       return;
     }
+    if (result.probes?.length) {
+      setStatus(null);
+      setError("Answer each question, then save.");
+      return;
+    }
+    pendingTalk.current = null;
+    setProbes(null);
     setStatus("Saved. The score is on the dashboard.");
     router.refresh();
   }
@@ -338,6 +383,67 @@ export function TalkSession({
   }
 
   const label = holding ? talkButtonLabel(elapsed) : "Tap to talk";
+
+  if (probes?.length) {
+    const ready = probes.every((probe) => choices[probe.id]);
+    return (
+      <div className="flex w-full flex-col items-stretch">
+        <p className="max-w-sm leading-6 text-stone-400">
+          A few yes or no questions. They stay off the saved transcript.
+        </p>
+        <ul className="mt-4 space-y-4">
+          {probes.map((probe) => (
+            <li key={probe.id} className="border-t border-white/10 pt-3">
+              <p className="text-stone-100">{probe.question}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["yes", "Yes"],
+                    ["no", "No"],
+                    ["dont_know", "Don't know"],
+                  ] as const
+                ).map(([answer, text]) => (
+                  <button
+                    key={answer}
+                    type="button"
+                    aria-pressed={choices[probe.id] === answer}
+                    className={`min-h-11 rounded-[10px] border px-3 ${
+                      choices[probe.id] === answer
+                        ? "border-[#0a84ff] text-stone-100"
+                        : "border-white/15 text-stone-300"
+                    }`}
+                    onClick={() =>
+                      setChoices((current) => ({ ...current, [probe.id]: answer }))
+                    }
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="mt-4 min-h-11 rounded-[10px] bg-[#0a84ff] px-4 text-stone-950 disabled:opacity-40"
+          disabled={!ready || status === "Saving"}
+          onClick={() => void saveProbes()}
+        >
+          Save check-in
+        </button>
+        {status ? (
+          <p className="mt-3 text-stone-400" role="status">
+            {status}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="mt-3 text-[#ffb4ab]" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col items-center">
