@@ -27,6 +27,21 @@ export function formatDay(isoDate: string) {
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
+export function londonHour(time = Date.now(), timeZone = TIME_ZONE) {
+  try {
+    const hour = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(time))
+      .find((part) => part.type === "hour")?.value;
+    return Number(hour ?? "12");
+  } catch {
+    return new Date(time).getUTCHours();
+  }
+}
+
 export function sameLondonDay(iso: string | null, now = Date.now()) {
   if (!iso) {
     return false;

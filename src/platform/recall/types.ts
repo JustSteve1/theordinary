@@ -65,7 +65,6 @@ export type HomeStateId =
   | "not_enough_data"
   | "no_source"
   | "mic_blocked"
-  | "done_today"
   | "needs_consent";
 
 export type Precheck = {

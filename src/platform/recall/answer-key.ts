@@ -97,9 +97,14 @@ function hourInZone(time: number, timeZone: string) {
   }
 }
 
-function remembered(terms: string[], text: string) {
+/** True when any term is among the same keywords used to score a talk. */
+export function matchesTerms(terms: string[], text: string) {
   const words = new Set(keywords(text));
   return terms.some((term) => words.has(term));
+}
+
+function remembered(terms: string[], text: string) {
+  return matchesTerms(terms, text);
 }
 
 /**

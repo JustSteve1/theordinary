@@ -1,0 +1,237 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-10-18",
+  "locale": "en-GB",
+  "v1": {
+    "rules": {
+      "openerVariant": "session_index % 4",
+      "followUpPair": "same index as the opener variant",
+      "followUpCount": 2,
+      "noContentCues": true
+    },
+    "openers": {
+      "morning": [
+        {
+          "id": "FR-MOR-01",
+          "text": "Let's go back to yesterday morning, from when you got up until lunchtime. Take a moment to picture where you were. Then tell me everything you can remember: who you were with, where you went, what was talked about, and anything that got decided."
+        },
+        {
+          "id": "FR-MOR-02",
+          "text": "Think back to yesterday morning. Where were you, and who was around? Tell me everything that comes to mind: people, places, conversations, and any plans or decisions. Take your time."
+        },
+        {
+          "id": "FR-MOR-03",
+          "text": "I'd like to hear about yesterday morning. Picture the start of it, then talk me through as much as you can: who you saw, where you were, what you talked about, and how things were left."
+        },
+        {
+          "id": "FR-MOR-04",
+          "text": "Cast your mind back to yesterday morning, up to lunchtime. Tell me about it in as much detail as you can: the people, the places, the conversations, and anything that was agreed. There's no rush."
+        }
+      ],
+      "afternoon": [
+        {
+          "id": "FR-AFT-01",
+          "text": "Let's go back to yesterday afternoon, from lunchtime onwards. Take a moment to picture where you were. Then tell me everything you can remember: who you were with, where you went, what was talked about, and anything that got decided."
+        },
+        {
+          "id": "FR-AFT-02",
+          "text": "Think back to yesterday afternoon. Where were you, and who was around? Tell me everything that comes to mind: people, places, conversations, and any plans or decisions. Take your time."
+        },
+        {
+          "id": "FR-AFT-03",
+          "text": "I'd like to hear about yesterday afternoon. Picture the start of it, then talk me through as much as you can: who you saw, where you were, what you talked about, and how things were left."
+        },
+        {
+          "id": "FR-AFT-04",
+          "text": "Cast your mind back to yesterday afternoon. Tell me about it in as much detail as you can: the people, the places, the conversations, and anything that was agreed. There's no rush."
+        }
+      ],
+      "evening": [
+        {
+          "id": "FR-EVE-01",
+          "text": "Let's go back to yesterday evening, from about six until you went to bed. Take a moment to picture where you were. Then tell me everything you can remember: who you were with, where you were, what was talked about, and anything that got decided."
+        },
+        {
+          "id": "FR-EVE-02",
+          "text": "Think back to yesterday evening. Where were you, and who was around? Tell me everything that comes to mind: people, places, conversations, and any plans or decisions. Take your time."
+        },
+        {
+          "id": "FR-EVE-03",
+          "text": "I'd like to hear about yesterday evening. Picture the start of it, then talk me through as much as you can: who you saw, where you were, what you talked about, and how things were left."
+        },
+        {
+          "id": "FR-EVE-04",
+          "text": "Cast your mind back to yesterday evening. Tell me about it in as much detail as you can: the people, the places, the conversations, and anything that was agreed. There's no rush."
+        }
+      ],
+      "day": [
+        {
+          "id": "FR-DAY-01",
+          "text": "Let's go back to yesterday, from when you got up until bed. Take a moment to picture how it started. Then talk me through it: who you were with, where you went, what was talked about, anything that got decided, and the highs and lows too."
+        },
+        {
+          "id": "FR-DAY-02",
+          "text": "Think back over yesterday. Tell me everything that comes to mind: people, places, conversations, plans or decisions, and how the day felt. Take your time."
+        },
+        {
+          "id": "FR-DAY-03",
+          "text": "I'd like to hear about your day yesterday. Start wherever feels natural and talk me through as much as you can: who you saw, where you were, what you talked about, how things were left, and the highs and lows."
+        },
+        {
+          "id": "FR-DAY-04",
+          "text": "Cast your mind back to yesterday. Tell me about it in as much detail as you can: the people, the places, the conversations, anything that was agreed, and how it all felt. There's no rush."
+        }
+      ]
+    },
+    "followUps": [
+      {
+        "id": "FU-A",
+        "first": "Anything else?",
+        "second": "Anything else at all, even small things?"
+      },
+      {
+        "id": "FU-B",
+        "first": "What else comes to mind?",
+        "second": "Anything at all, however small?"
+      },
+      {
+        "id": "FU-C",
+        "first": "Is there anything more?",
+        "second": "Even small details count. Anything else?"
+      },
+      {
+        "id": "FU-D",
+        "first": "Anything else from then?",
+        "second": "Anything at all, even if you're not sure?"
+      }
+    ],
+    "backchannels": {
+      "allowed": ["Mm-hm.", "Okay.", "Go on.", "Take your time.", "I'm listening."],
+      "never": [
+        "Good",
+        "Right",
+        "Yes",
+        "Exactly",
+        "Great",
+        "Well done",
+        "Interesting",
+        "That's correct",
+        "Are you sure?"
+      ]
+    },
+    "handling": [
+      {
+        "id": "RH-01",
+        "when": "Silence for 8 seconds or more after the opener",
+        "text": "Take your time. Wherever you'd like to start is fine.",
+        "replacesFollowUp": false
+      },
+      {
+        "id": "RH-02",
+        "when": "I can't remember anything",
+        "text": "That's okay. Even one small thing is fine. Wherever comes to mind.",
+        "replacesFollowUp": true
+      },
+      {
+        "id": "RH-03",
+        "when": "Nothing happened or it was a quiet day",
+        "text": "That's fine, quiet times count too. Anything at all, however small?",
+        "replacesFollowUp": true
+      },
+      {
+        "id": "RH-04",
+        "when": "Talks about a different part of the day",
+        "text": "Thanks. Thinking just about the {window}, anything else?",
+        "replacesFollowUp": true
+      },
+      {
+        "id": "RH-05",
+        "when": "Did I get it right? or How am I doing?",
+        "text": "I'll go through everything once we've finished.",
+        "replacesFollowUp": false
+      },
+      {
+        "id": "RH-06",
+        "when": "Asks for a hint or reminder",
+        "text": "I can't give hints during this part, but I can show you everything afterwards if you'd like.",
+        "replacesFollowUp": false
+      },
+      {
+        "id": "RH-07",
+        "when": "Talks about feelings or goes off on a tangent",
+        "text": "",
+        "replacesFollowUp": false
+      },
+      {
+        "id": "RH-08",
+        "when": "Interrupted",
+        "text": "No problem. Carry on whenever you're ready.",
+        "replacesFollowUp": false
+      },
+      {
+        "id": "RH-09",
+        "when": "Asks to stop",
+        "text": "Of course. We'll stop there, and nothing from today has been saved.",
+        "replacesFollowUp": false,
+        "aborts": true
+      },
+      {
+        "id": "RH-10",
+        "when": "Frustration, self-criticism, or worry about their memory",
+        "text": "Let's leave it there for today. Nothing's been saved, and we can try again another time.",
+        "replacesFollowUp": false,
+        "aborts": true
+      }
+    ],
+    "closing": {
+      "id": "CL-01",
+      "text": "Thanks, that's everything I need for today."
+    }
+  },
+  "v2": {
+    "note": "Starter templates. Do not ask these in v1.",
+    "cuedRecall": [
+      { "id": "CR-PER-01", "template": "You mentioned {topic}. Who was that with?" },
+      { "id": "CR-PER-02", "template": "When you were at {place}, who did you see?" },
+      { "id": "CR-PLA-01", "template": "When you saw {person}, where was that?" },
+      { "id": "CR-PLA-02", "template": "Where were you when you {activity}?" },
+      { "id": "CR-ACT-01", "template": "What were you doing around {time}?" },
+      { "id": "CR-ACT-02", "template": "With {person}, what did you get up to?" },
+      { "id": "CR-TOP-01", "template": "What did you and {person} talk about?" },
+      { "id": "CR-TOP-02", "template": "At {place}, what was the conversation about?" },
+      { "id": "CR-DEC-01", "template": "When you talked about {topic}, was anything agreed?" },
+      { "id": "CR-DEC-02", "template": "How were things left with {person}?" },
+      { "id": "CR-TIM-01", "template": "Roughly what time did you {activity}?" },
+      { "id": "CR-TIM-02", "template": "When you saw {person}, was that earlier or later on?" },
+      {
+        "id": "CR-OBJ-01",
+        "template": "When you talked with {person}, did any particular thing come up, something bought, lent or needed?"
+      },
+      {
+        "id": "CR-OBJ-02",
+        "template": "During the conversation about {topic}, was a particular item mentioned?"
+      },
+      { "id": "CR-QTY-01", "template": "When you talked about {topic}, did a number or amount come up?" },
+      { "id": "CR-QTY-02", "template": "With {person}, was there a figure or a count mentioned?" }
+    ],
+    "recognition": [
+      {
+        "id": "RC-01",
+        "format": "multi_select",
+        "template": "Which of these happened yesterday {window}? You can pick more than one, or none: {options}."
+      },
+      { "id": "RC-02", "format": "yes_no", "template": "Yesterday {window}, did you talk about {item}?" },
+      { "id": "RC-03", "format": "yes_no", "template": "Yesterday {window}, did you see {item}?" },
+      { "id": "RC-04", "format": "yes_no", "template": "Yesterday {window}, were you at {item}?" }
+    ],
+    "temporalOrder": [
+      { "id": "TO-01", "format": "pair", "template": "Which came first yesterday: {event_a}, or {event_b}?" },
+      {
+        "id": "TO-02",
+        "format": "triple",
+        "template": "Put these in the order they happened: {event_a}, {event_b}, {event_c}."
+      },
+      { "id": "TO-03", "format": "anchor", "template": "Was {event_a} before or after {event_b}?" }
+    ]
+  }
+}

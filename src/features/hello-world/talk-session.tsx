@@ -1,18 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { ClientProbe } from "@/src/platform/recall/answer-key";
+import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
 import { copy } from "@/src/platform/recall/copy";
-import { RecordingIndicator } from "@/src/platform/shell/recording-indicator";
-
-type TalkPayload = {
-  narrative: string;
-  answers: { id: string; answer: string }[];
-  poorSleep: boolean;
-  unwell: boolean;
-};
+import {
+  handlingMatch,
+  lineAt,
+  nextFollowSlot,
+  silenceDue,
+  talkButtonLabel,
+  type FollowReplacement,
+  type ProbeLine,
+  type TalkScript,
+} from "@/src/platform/recall/probe-timing";
 
 type SpeechRec = {
   continuous: boolean;
@@ -36,7 +38,7 @@ function emptyReason(problem: string | null) {
     return "This browser can't write down speech. Use Safari on iPhone, or Chrome on a computer.";
   }
   if (problem === "not-allowed" || problem === "service-not-allowed") {
-    return "Allow the microphone for this site, then hold to talk again.";
+    return "Allow the microphone for this site, then tap to talk again.";
   }
   if (problem === "audio-capture") {
     return "Recall can't use your microphone.";
@@ -44,7 +46,7 @@ function emptyReason(problem: string | null) {
   if (problem === "start") {
     return "This browser didn't start speech capture.";
   }
-  return "Nothing was captured. Hold the button and talk about your day.";
+  return "Nothing was captured. Tap the button and talk about your day.";
 }
 
 function recognition(): SpeechRec | null {
@@ -68,39 +70,52 @@ function recognition(): SpeechRec | null {
 }
 
 export function TalkSession({
-  probes,
+  script,
   finishTalk,
 }: {
-  probes: ClientProbe[];
+  script: TalkScript;
   finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
 }) {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
-  const [question, setQuestion] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [cue, setCue] = useState<ProbeLine | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [poorSleep, setPoorSleep] = useState(false);
   const [unwell, setUnwell] = useState(false);
-  const [heard, setHeard] = useState("");
   const holdingRef = useRef(false);
-  const active = useRef<string | "narrative">("narrative");
   const interim = useRef("");
-  const buckets = useRef<{ narrative: string; answers: Record<string, string> }>({
-    narrative: "",
-    answers: {},
-  });
-  const timers = useRef<number[]>([]);
+  const narrativeRef = useRef("");
+  const turnsRef = useRef<TalkPayload["turns"]>([]);
+  const cueRef = useRef<ProbeLine | null>(null);
+  const replacementRef = useRef<FollowReplacement | null>(null);
+  const lastSpeechAt = useRef<number | null>(null);
+  const scriptRef = useRef(script);
   const recRef = useRef<SpeechRec | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const saving = useRef(false);
   const speechProblem = useRef<string | null>(null);
   const endWait = useRef<(() => void) | null>(null);
-  const release = useRef<(() => void) | null>(null);
-  const interrupted = useRef(false);
+  const startedAt = useRef(0);
+  const tickRef = useRef<() => void>(() => {});
+  scriptRef.current = script;
 
-  function remember() {
-    const answers = Object.values(buckets.current.answers).join(" ");
-    setHeard(`${buckets.current.narrative} ${answers} ${interim.current}`.replace(/\s+/g, " ").trim());
+  function elapsedNow() {
+    return performance.now() - startedAt.current;
+  }
+
+  function noteHandling(elapsedMs: number) {
+    if (replacementRef.current) {
+      return;
+    }
+    const kind = handlingMatch(narrativeRef.current);
+    const slot = kind ? nextFollowSlot(elapsedMs) : null;
+    if (!kind || !slot) {
+      return;
+    }
+    const line = scriptRef.current.handling[kind];
+    replacementRef.current = { slot, id: line.id, text: line.text };
   }
 
   function append(text: string) {
@@ -108,13 +123,23 @@ export function TalkSession({
     if (!clean) {
       return;
     }
-    if (active.current === "narrative") {
-      buckets.current.narrative = `${buckets.current.narrative} ${clean}`.trim();
-    } else {
-      const id = active.current;
-      buckets.current.answers[id] = `${buckets.current.answers[id] ?? ""} ${clean}`.trim();
+    narrativeRef.current = `${narrativeRef.current} ${clean}`.trim();
+    const current = cueRef.current;
+    if (current) {
+      const turn = turnsRef.current.find((item) => item.id === current.id);
+      if (turn) {
+        turn.answer = `${turn.answer} ${clean}`.trim();
+      } else {
+        turnsRef.current.push({
+          id: current.id,
+          question: current.text,
+          answer: clean,
+        });
+      }
     }
-    remember();
+    const elapsedMs = elapsedNow();
+    lastSpeechAt.current = elapsedMs;
+    noteHandling(elapsedMs);
   }
 
   function commitInterim() {
@@ -123,35 +148,6 @@ export function TalkSession({
     if (text) {
       append(text);
     }
-  }
-
-  function clearTimers() {
-    timers.current.forEach((id) => window.clearTimeout(id));
-    timers.current = [];
-  }
-
-  function later(ms: number, run: () => void) {
-    const id = window.setTimeout(run, ms);
-    timers.current.push(id);
-  }
-
-  function showProbe(index: number) {
-    const probe = probes[index];
-    if (!probe || !holdingRef.current) {
-      return;
-    }
-    commitInterim();
-    active.current = probe.id;
-    setQuestion(probe.question);
-    later(6000, () => {
-      if (!holdingRef.current) {
-        return;
-      }
-      commitInterim();
-      active.current = "narrative";
-      setQuestion(null);
-      later(8000, () => showProbe(index + 1));
-    });
   }
 
   function onSpeech(event: SpeechEvent) {
@@ -170,7 +166,6 @@ export function TalkSession({
       append(finalText);
     }
     interim.current = pending.trim();
-    remember();
   }
 
   function begin() {
@@ -179,15 +174,17 @@ export function TalkSession({
     }
     setError(null);
     setStatus(null);
-    setHeard("");
     speechProblem.current = null;
-    interrupted.current = false;
-    buckets.current = { narrative: "", answers: {} };
+    narrativeRef.current = "";
+    turnsRef.current = [];
     interim.current = "";
-    active.current = "narrative";
+    cueRef.current = null;
+    replacementRef.current = null;
+    lastSpeechAt.current = null;
+    setCue(null);
+    setElapsed(0);
     holdingRef.current = true;
-    setHolding(true);
-    setQuestion(null);
+    startedAt.current = performance.now();
 
     const rec = recognition();
     recRef.current = rec;
@@ -201,7 +198,12 @@ export function TalkSession({
         speechProblem.current = code;
       };
       rec.onend = () => {
-        if (holdingRef.current) {
+        if (
+          holdingRef.current &&
+          speechProblem.current !== "not-allowed" &&
+          speechProblem.current !== "service-not-allowed" &&
+          speechProblem.current !== "audio-capture"
+        ) {
           try {
             rec.start();
           } catch {
@@ -218,35 +220,15 @@ export function TalkSession({
       }
     } else {
       speechProblem.current = "unsupported";
-    }
-
-    const onRelease = () => void stop();
-    const onInterrupt = () => {
-      interrupted.current = true;
-      void stop();
-    };
-    release.current = () => {
-      window.removeEventListener("pointerup", onRelease);
-      window.removeEventListener("touchend", onRelease);
-      window.removeEventListener("pointercancel", onInterrupt);
-      window.removeEventListener("touchcancel", onInterrupt);
-    };
-    window.addEventListener("pointerup", onRelease);
-    window.addEventListener("touchend", onRelease);
-    window.addEventListener("pointercancel", onInterrupt);
-    window.addEventListener("touchcancel", onInterrupt);
-    if (!rec) {
       void openMicrophone();
     }
-    if (probes.length > 0) {
-      later(8000, () => showProbe(0));
-    }
+    setHolding(true);
   }
 
   /**
    * Speech-to-text opens the microphone itself. A second audio stream on
-   * iPhone cuts that off, so the plain stream is only used to explain a
-   * missing microphone when speech-to-text is unavailable.
+   * iPhone cuts that off, so the plain stream is only used when speech-to-text
+   * is unavailable.
    */
   async function openMicrophone() {
     try {
@@ -256,16 +238,43 @@ export function TalkSession({
     }
   }
 
-  async function stop() {
-    if (!holdingRef.current) {
+  tickRef.current = () => {
+    const elapsedMs = elapsedNow();
+    setElapsed(elapsedMs);
+    if (!replacementRef.current && silenceDue(elapsedMs, lastSpeechAt.current)) {
+      const slot = nextFollowSlot(elapsedMs);
+      if (slot) {
+        const line = scriptRef.current.handling.silence;
+        replacementRef.current = { slot, id: line.id, text: line.text };
+      }
+    }
+    const next = lineAt(elapsedMs, scriptRef.current, replacementRef.current);
+    if (cueRef.current?.id !== next?.id) {
+      commitInterim();
+    }
+    cueRef.current = next;
+    setCue((current) =>
+      current?.id === next?.id && current?.text === next?.text ? current : next,
+    );
+  };
+
+  useEffect(() => {
+    if (!holding) {
       return;
     }
+    const id = window.setInterval(() => tickRef.current(), 200);
+    return () => window.clearInterval(id);
+  }, [holding]);
+
+  async function stop() {
+    if (!holdingRef.current || saving.current) {
+      return;
+    }
+    saving.current = true;
     holdingRef.current = false;
     setHolding(false);
-    release.current?.();
-    release.current = null;
-    clearTimers();
-    setQuestion(null);
+    setStatus("Saving");
+    const durationMs = Math.round(elapsedNow());
     const rec = recRef.current;
     if (rec) {
       await new Promise<void>((resolve) => {
@@ -286,26 +295,27 @@ export function TalkSession({
     recRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    cueRef.current = null;
+    setCue(null);
 
-    const narrative = buckets.current.narrative.trim();
-    const answers = probes.map((probe) => ({
-      id: probe.id,
-      answer: buckets.current.answers[probe.id] ?? "",
-    }));
-    if (!narrative && answers.every((item) => !item.answer)) {
-      setError(
-        interrupted.current
-          ? "That hold was interrupted, usually by the microphone prompt. Hold to talk again."
-          : emptyReason(speechProblem.current),
-      );
-      interrupted.current = false;
+    const narrative = narrativeRef.current.trim();
+    const turns = turnsRef.current.map((turn) => ({ ...turn }));
+    if (!narrative && turns.every((turn) => !turn.answer)) {
+      saving.current = false;
+      setStatus(null);
+      setError(emptyReason(speechProblem.current));
       return;
     }
-    interrupted.current = false;
 
-    saving.current = true;
-    setStatus("Saving");
-    const result = await finishTalk({ narrative, answers, poorSleep, unwell });
+    const result = await finishTalk({
+      narrative,
+      turns,
+      durationMs,
+      openerId: script.opener.id,
+      followUpId: script.followUpId,
+      poorSleep,
+      unwell,
+    });
     saving.current = false;
     if (result.error) {
       setStatus(null);
@@ -316,28 +326,25 @@ export function TalkSession({
     router.refresh();
   }
 
+  function onTap() {
+    if (saving.current || status === "Saving") {
+      return;
+    }
+    if (holdingRef.current) {
+      void stop();
+      return;
+    }
+    begin();
+  }
+
+  const label = holding ? talkButtonLabel(elapsed) : "Tap to talk";
+
   return (
-    <div className="flex flex-col items-center">
-      <p className="max-w-sm text-center text-[13px] leading-5 text-stone-400">
-        {probes.length === 0
-          ? "Questions start once Bee has a day to draw from."
-          : "A question may appear while you talk. Answer it in your own words."}
+    <div className="flex w-full flex-col items-center">
+      <p className="max-w-sm text-center leading-6 text-stone-400">
+        A question may appear while you talk. Answer it in your own words.
       </p>
-      <div className="mt-6 flex min-h-16 flex-col items-center justify-center px-4 text-center">
-        {question ? (
-          <p className="max-w-sm text-balance text-[28px] font-medium leading-8 tracking-tight text-stone-100" aria-live="assertive">
-            {question}
-          </p>
-        ) : holding ? (
-          <RecordingIndicator label="Listening" interactive={false} />
-        ) : null}
-        {heard ? (
-          <p className="mt-3 max-w-sm text-[13px] leading-5 text-stone-300" aria-live="polite">
-            {heard}
-          </p>
-        ) : null}
-      </div>
-      <div className="mt-6 flex w-full max-w-sm flex-col gap-3 text-left text-[13px] text-stone-300">
+      <div className="mt-4 flex w-full flex-col gap-3 text-left text-stone-300">
         <label className="flex min-h-12 items-center gap-3">
           <input
             type="checkbox"
@@ -355,45 +362,51 @@ export function TalkSession({
           {copy.unwellQuestion}
         </label>
       </div>
+      <div className="mt-4 flex min-h-12 w-full items-center justify-center px-1 text-center">
+        {holding && cue ? (
+          <p
+            className="max-w-sm text-balance text-[22px] font-medium leading-7 tracking-tight text-stone-100"
+            aria-live="assertive"
+          >
+            {cue.text}
+          </p>
+        ) : null}
+      </div>
       <button
         type="button"
-        className={`mt-4 flex size-44 items-center justify-center rounded-full border text-[13px] text-stone-100 touch-none select-none [-webkit-touch-callout:none] ${
+        className={`mt-4 flex size-48 items-center justify-center rounded-full border px-4 text-center text-[22px] font-medium leading-tight tabular-nums text-stone-100 touch-none select-none [-webkit-touch-callout:none] ${
           holding ? "border-[#0a84ff]" : "border-white/15"
         }`}
         aria-pressed={holding}
-        aria-label="Hold to talk about your day"
+        aria-label={holding ? `${label}. Tap to finish` : "Tap to talk about your day"}
+        disabled={status === "Saving"}
         onContextMenu={(event) => event.preventDefault()}
         onPointerDown={(event) => {
           if (event.button !== 0) {
             return;
           }
           event.preventDefault();
-          begin();
+          onTap();
         }}
         onKeyDown={(event) => {
           if ((event.key === " " || event.key === "Enter") && !event.repeat) {
             event.preventDefault();
-            void begin();
-          }
-        }}
-        onKeyUp={(event) => {
-          if (event.key === " " || event.key === "Enter") {
-            void stop();
+            onTap();
           }
         }}
       >
-        {holding ? "Release to finish" : "Hold to talk"}
+        {label}
       </button>
-      <p className="mt-4 max-w-sm text-center text-[13px] leading-5 text-stone-400">
+      <p className="mt-4 max-w-sm text-center leading-6 text-stone-400">
         Tell us about your day.
       </p>
       {status ? (
-        <p className="mt-3 text-center text-[13px] text-stone-400" role="status">
+        <p className="mt-3 text-center text-stone-400" role="status">
           {status}
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 max-w-sm text-center text-[13px] text-[#ffb4ab]" role="alert">
+        <p className="mt-3 max-w-sm text-center text-[#ffb4ab]" role="alert">
           {error}
         </p>
       ) : null}

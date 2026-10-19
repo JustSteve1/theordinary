@@ -67,9 +67,9 @@ export function RecallFrame({
   wide?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[13px] leading-5 text-stone-100">
+    <div className="min-h-screen bg-[#0a0a0a] text-base leading-6 text-stone-100">
       <header className="border-b border-white/10">
-        <div className="flex h-12 items-center justify-between gap-4 px-4">
+        <div className="flex h-12 items-center justify-between gap-3 px-4">
           <Link href={homeHref} className="font-medium tracking-tight">
             The Ordinary
           </Link>
@@ -91,7 +91,7 @@ export function RecallFrame({
         </nav>
       </header>
       <main
-        className={`mx-auto w-full px-6 py-8 ${wide ? "max-w-6xl" : "max-w-2xl"}`}
+        className={`mx-auto w-full px-4 py-5 ${wide ? "max-w-6xl" : "max-w-2xl"}`}
       >
         {children}
       </main>
@@ -108,7 +108,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-[10px] border border-white/10 p-6 ${className}`}
+      className={`rounded-[10px] border border-white/10 p-4 ${className}`}
     >
       {children}
     </section>

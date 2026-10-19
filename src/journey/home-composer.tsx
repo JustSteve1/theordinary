@@ -1,29 +1,27 @@
 "use client";
 
 import { HomeCard, type LaunchMap } from "@/src/features/hello-world/home-card";
+import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
 import { HealthForm } from "@/src/features/onboarding/health-form";
-import type { ClientProbe } from "@/src/platform/recall/answer-key";
+import type { TalkScript } from "@/src/platform/recall/probe-timing";
 import type { HomeStateId } from "@/src/platform/recall/types";
-
-type TalkPayload = {
-  narrative: string;
-  answers: { id: string; answer: string }[];
-  poorSleep?: boolean;
-  unwell?: boolean;
-};
 
 export function HomeComposer({
   state,
   name,
-  probes,
+  script,
   beeDay,
+  neededToday,
+  lastShort,
   launches,
   finishTalk,
 }: {
   state: HomeStateId;
   name: string;
-  probes: ClientProbe[];
+  script: TalkScript;
   beeDay: string | null;
+  neededToday: boolean;
+  lastShort: boolean;
   launches: LaunchMap;
   finishTalk: (payload: TalkPayload) => Promise<{ error?: string; saved?: boolean }>;
 }) {
@@ -31,8 +29,10 @@ export function HomeComposer({
     <HomeCard
       state={state}
       name={name}
-      probes={probes}
+      script={script}
       beeDay={beeDay}
+      neededToday={neededToday}
+      lastShort={lastShort}
       launches={launches}
       consent={<HealthForm />}
       finishTalk={finishTalk}

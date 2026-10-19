@@ -9,29 +9,30 @@ import { loadDossier } from "@/src/platform/recall/dossier";
 import { beeCoversYesterday, precheck } from "@/src/platform/recall/capture";
 import { clearReveal, writeReveal } from "@/src/platform/recall/cookies";
 import { copy } from "@/src/platform/recall/copy";
-import { dateKey, yesterdayKey } from "@/src/platform/recall/dates";
+import { yesterdayKey } from "@/src/platform/recall/dates";
 import {
   field,
   isRedirectError,
   type FormState,
 } from "@/src/platform/recall/form";
 import { requireRecall } from "@/src/platform/recall/guard";
+import { TALK_MS } from "@/src/platform/recall/probe-timing";
+import { defaultRubric, scoreRubric } from "@/src/platform/recall/rubric";
 import {
   insertSession,
   insertTalk,
   listSessions,
+  loadRubric,
   updateMicStatus,
 } from "@/src/platform/recall/store";
 import { logSession } from "@/src/platform/recall/log-session";
 import { buildSession } from "@/src/platform/recall/trend";
 import { mockMissed } from "@/src/features/check-in/script";
+import type { TalkPayload } from "@/src/features/hello-world/talk-payload";
 
-export async function finishTalk(payload: {
-  narrative: string;
-  answers: { id: string; answer: string }[];
-  poorSleep?: boolean;
-  unwell?: boolean;
-}): Promise<{ error?: string; saved?: boolean }> {
+export async function finishTalk(
+  payload: TalkPayload,
+): Promise<{ error?: string; saved?: boolean }> {
   const profile = await requireRecall({ min: "done", max: "done" });
   if (!profile.consent.healthAcceptedAt) {
     return { error: "Health-data consent is needed before a check-in." };
@@ -40,18 +41,21 @@ export async function finishTalk(payload: {
   const narrative = String(payload.narrative ?? "")
     .trim()
     .slice(0, 8000);
-  const answers = (Array.isArray(payload.answers) ? payload.answers : [])
+  const turns = (Array.isArray(payload.turns) ? payload.turns : [])
     .slice(0, 6)
     .map((item) => ({
       id: String(item?.id ?? "").slice(0, 80),
+      question: String(item?.question ?? "")
+        .trim()
+        .slice(0, 800),
       answer: String(item?.answer ?? "")
         .trim()
         .slice(0, 2000),
     }))
-    .filter((item) => item.id);
-  if (!narrative && answers.every((item) => !item.answer)) {
+    .filter((item) => item.id && (item.question || item.answer));
+  if (!narrative && turns.every((item) => !item.answer)) {
     return {
-      error: "Nothing was captured. Hold the button and talk about your day.",
+      error: "Nothing was captured. Tap the button and talk about your day.",
     };
   }
 
@@ -59,23 +63,13 @@ export async function finishTalk(payload: {
     const dossier = await loadDossier(profile.id);
     const sessions = dossier.sessions;
     const facts = dossier.facts;
-    const today = dateKey(Date.now());
-    if (
-      sessions.some(
-        (session) =>
-          !session.aborted &&
-          dateKey(new Date(session.recordedAt).getTime()) === today,
-      )
-    ) {
-      return { error: copy.doneToday };
-    }
     const now = new Date();
     const scored = assessTalk({
       id: randomUUID(),
       now,
       facts,
       narrative,
-      answers,
+      answers: [],
       prior: sessions,
       confounders: {
         poorSleep: Boolean(payload.poorSleep),
@@ -83,17 +77,22 @@ export async function finishTalk(payload: {
       },
     });
     const session = await logSession({ ...scored, prior: sessions });
-    await insertSession(profile.id, session);
-    await insertTalk(
-      profile.id,
-      session.id,
-      narrative,
-      answers.map((item) => ({
-        id: item.id,
-        question: facts.find((fact) => fact.id === item.id)?.question ?? "",
-        answer: item.answer,
-      })),
+    const durationMs = Math.max(
+      0,
+      Math.min(60 * 60 * 1000, Math.round(Number(payload.durationMs) || 0)),
     );
+    const stored = await loadRubric(profile.id);
+    const spoken = `${narrative} ${turns.map((turn) => turn.answer).join(" ")}`.trim();
+    const openerId = probeId(payload.openerId);
+    const followUpId = probeId(payload.followUpId);
+    await insertSession(profile.id, session, {
+      durationMs,
+      short: durationMs < TALK_MS,
+      openerId,
+      followUpId,
+      scores: scoreRubric(stored ?? defaultRubric(facts), spoken),
+    });
+    await insertTalk(profile.id, session.id, narrative, turns);
     if (profile.settings.micStatus !== "granted") {
       await updateMicStatus(profile.id, "granted");
     }
@@ -122,16 +121,6 @@ export async function completeCheckin(
       listSessions(profile.id),
       loadBee(profile.id),
     ]);
-    const today = dateKey(Date.now());
-    if (
-      sessions.some(
-        (session) =>
-          !session.aborted &&
-          dateKey(new Date(session.recordedAt).getTime()) === today,
-      )
-    ) {
-      redirect("/home");
-    }
     const check = precheck({
       beeEnabled: profile.settings.beeEnabled,
       beeOk: bee.status === "ok",
@@ -160,6 +149,11 @@ export async function completeCheckin(
     }
     return { error: "Something went wrong on our side. Nothing was saved." };
   }
+}
+
+function probeId(value: unknown) {
+  const id = String(value ?? "");
+  return /^[A-Za-z0-9-]{1,32}$/.test(id) ? id : null;
 }
 
 export async function discardReveal(formData: FormData) {

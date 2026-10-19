@@ -24,6 +24,8 @@ export const copy = {
     "There isn't enough from yesterday to build a check-in. That's fine, try again tomorrow.",
   day1: "Your first check-in is tomorrow. Today, just go about your day.",
   ready: "Ready when you are. It takes about 3 minutes.",
+  neededToday: "A check-in is still needed today.",
+  lastShort: "The last one was short. This recording can add the rest.",
   doneToday: "You've checked in today. See you tomorrow.",
   noSource: "Turn on day capture or connect a Bee to start check-ins.",
   micBlocked: "Recall can't use your microphone.",

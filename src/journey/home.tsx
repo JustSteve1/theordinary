@@ -18,7 +18,7 @@ export async function HomeScreen({
 }) {
   const profile = await requireRecall({ min: "done", max: "done" });
   const notice = notices[(await searchParams).notice ?? ""] ?? "";
-  const { state, probes, beeDay } = await loadHomeContext(profile);
+  const { state, script, beeDay, neededToday, lastShort } = await loadHomeContext(profile);
 
   return (
     <div>
@@ -30,8 +30,10 @@ export async function HomeScreen({
       <HomeComposer
         state={state}
         name={profile.name.split(" ")[0] || profile.name}
-        probes={probes}
+        script={script}
         beeDay={beeDay}
+        neededToday={neededToday}
+        lastShort={lastShort}
         launches={homeLaunch}
         finishTalk={finishTalk}
       />

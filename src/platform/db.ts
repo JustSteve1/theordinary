@@ -113,6 +113,18 @@ create table if not exists email_tokens (
   used_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table recall_sessions add column if not exists duration_ms integer;
+alter table recall_sessions add column if not exists short boolean not null default false;
+alter table recall_sessions add column if not exists opener_id text;
+alter table recall_sessions add column if not exists follow_up_id text;
+alter table recall_sessions add column if not exists item_scores jsonb;
+
+create table if not exists recall_rubric (
+  user_id uuid primary key references members (id) on delete cascade,
+  items jsonb not null,
+  updated_at timestamptz not null default now()
+);
 `;
 
 function databaseUrl() {

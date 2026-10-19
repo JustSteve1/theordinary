@@ -91,7 +91,7 @@ const branches: { title: string; detail: string; steps: Step[] }[] = [
   {
     title: "Check-in",
     detail: "The episodic recall task.",
-    steps: [{ id: "CI-2", label: "Hold to talk", route: "/home" }],
+    steps: [{ id: "CI-2", label: "Tap to talk", route: "/home" }],
   },
   {
     title: "Summary",

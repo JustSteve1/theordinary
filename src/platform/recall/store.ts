@@ -5,6 +5,8 @@ import { ensureFirstMember } from "@/src/platform/members";
 import { hashPassword, verifyPassword } from "@/src/platform/password";
 import { db, ready, StoreError } from "@/src/platform/db";
 import { recallDefaults, type OnboardingStep } from "@/src/platform/recall/defaults";
+import { formatDuration } from "@/src/platform/recall/probe-timing";
+import { cleanRubric, type RubricItem } from "@/src/platform/recall/rubric";
 import type {
   MicStatus,
   RecallProfile,
@@ -470,13 +472,27 @@ export async function listSessions(userId: string): Promise<SessionRecord[]> {
   return rows.map(mapSession);
 }
 
-export async function insertSession(userId: string, session: SessionRecord) {
+export type SessionDetail = {
+  durationMs: number;
+  short: boolean;
+  openerId: string | null;
+  followUpId: string | null;
+  scores: { id: string; label: string; score: number }[];
+};
+
+export async function insertSession(
+  userId: string,
+  session: SessionRecord,
+  detail?: SessionDetail | null,
+) {
   await ready();
+  const scores = detail ? db().json(detail.scores) : null;
   await db()`
     insert into recall_sessions (
       id, user_id, recorded_at, session_date, day_window, aborted, composite,
       core_recall, detail_recall, intrusion_rate, poor_sleep, unwell_or_alcohol,
-      n_prior, n_prior_clean, baseline_mean, baseline_sd, z_score, trend_flag
+      n_prior, n_prior_clean, baseline_mean, baseline_sd, z_score, trend_flag,
+      duration_ms, short, opener_id, follow_up_id, item_scores
     )
     values (
       ${session.id},
@@ -496,9 +512,35 @@ export async function insertSession(userId: string, session: SessionRecord) {
       ${session.trend.baselineMean},
       ${session.trend.baselineSd},
       ${session.trend.z},
-      ${session.trend.flag}
+      ${session.trend.flag},
+      ${detail?.durationMs ?? null},
+      ${detail?.short ?? false},
+      ${detail?.openerId ?? null},
+      ${detail?.followUpId ?? null},
+      ${scores}
     )
   `;
+}
+
+export type SessionNote = {
+  recordedAt: string;
+  aborted: boolean;
+  short: boolean;
+};
+
+export async function listSessionNotes(userId: string): Promise<SessionNote[]> {
+  await ready();
+  const rows = await db()`
+    select recorded_at, aborted, short
+    from recall_sessions
+    where user_id = ${userId}
+    order by recorded_at asc
+  `;
+  return rows.map((row) => ({
+    recordedAt: new Date(row.recorded_at as string | Date).toISOString(),
+    aborted: Boolean(row.aborted),
+    short: Boolean(row.short),
+  }));
 }
 
 async function ensureTalks() {
@@ -550,6 +592,67 @@ export async function insertTalk(
   await db()`
     insert into recall_talks (session_id, user_id, narrative, answers)
     values (${sessionId}, ${userId}, ${narrative}, ${db().json(answers)})
+  `;
+}
+
+export type CheckinRecord = {
+  time: string;
+  duration: string | null;
+  narrative: string;
+  questions: { question: string; answer: string }[];
+};
+
+export async function listCheckins(userId: string): Promise<CheckinRecord[]> {
+  await ensureTalks();
+  const rows = await db()`
+    select s.recorded_at, s.duration_ms, t.narrative, t.answers
+    from recall_talks t
+    join recall_sessions s on s.id = t.session_id
+    where t.user_id = ${userId}
+    order by s.recorded_at asc
+  `;
+  return rows.map((row) => ({
+    time: new Date(row.recorded_at as string | Date).toISOString(),
+    duration: formatDuration(numberOrNull(row.duration_ms)),
+    narrative: String(row.narrative ?? ""),
+    questions: talkAnswers(row.answers).map((item) => ({
+      question: item.question,
+      answer: item.answer,
+    })),
+  }));
+}
+
+export async function latestItemScores(userId: string) {
+  await ready();
+  const rows = await db()`
+    select item_scores
+    from recall_sessions
+    where user_id = ${userId} and aborted = false
+    order by recorded_at desc
+    limit 1
+  `;
+  return itemScores(rows[0]?.item_scores);
+}
+
+export async function loadRubric(userId: string): Promise<RubricItem[] | null> {
+  await ready();
+  const rows = await db()`
+    select items from recall_rubric where user_id = ${userId}
+  `;
+  if (!rows[0]) {
+    return null;
+  }
+  return cleanRubric(rows[0].items);
+}
+
+export async function saveRubric(userId: string, items: RubricItem[]) {
+  await ready();
+  await db()`
+    insert into recall_rubric (user_id, items)
+    values (${userId}, ${db().json(items)})
+    on conflict (user_id) do update
+    set items = ${db().json(items)},
+        updated_at = now()
   `;
 }
 
@@ -637,6 +740,26 @@ function iso(value: unknown) {
 
 function text(value: unknown) {
   return typeof value === "string" ? value : null;
+}
+
+function itemScores(value: unknown) {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const scores = value.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id : "";
+    const label = typeof row.label === "string" ? row.label : "";
+    const score = numberOrNull(row.score);
+    if (!id || !label || score === null) {
+      return [];
+    }
+    return [{ id, label, score }];
+  });
+  return scores;
 }
 
 function numberOrNull(value: unknown) {

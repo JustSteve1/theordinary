@@ -2,10 +2,7 @@ import type { HomeStateId, Precheck, RecallProfile } from "@/src/platform/recall
 
 export function homeState(input: {
   profile: RecallProfile;
-  checkedInToday: boolean;
-  sessionCount: number;
   check: Precheck;
-  now?: number;
 }): HomeStateId {
   if (!input.profile.consent.healthAcceptedAt) {
     return "needs_consent";
@@ -18,10 +15,6 @@ export function homeState(input: {
 
   if (input.check.source === "none") {
     return "no_source";
-  }
-
-  if (input.checkedInToday) {
-    return "done_today";
   }
 
   if (!input.check.eligible) {
