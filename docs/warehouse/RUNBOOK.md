@@ -91,4 +91,4 @@ Email nudges, rewards, pooling across members beyond within-member centring, and
 
 ## Bootstrap still needs a person
 
-`warehouse/bootstrap.sh` stops until `gcloud auth login` and `gcloud auth application-default login` have been run, billing is enabled on `the-ordinary-512212`, and `VERCEL_TEAM_SLUG` is the 440hz team slug with Team issuer mode. Do not use `steves-projects-af4cd3c7`. The script never creates a service-account key. The £25 budget is created only with `CONFIRM_BUDGET=25`.
+`warehouse/bootstrap.sh` needs `gcloud auth login`, `gcloud auth application-default login`, and billing on `the-ordinary-512212`. The confirmed team slug is `steves-projects-af4cd3c7` (`https://vercel.com/steves-projects-af4cd3c7/theordinary`). OIDC issuer mode must be Team. Dataset roles are written on the dataset access list, because dataset IAM policy bindings are not allowlisted on this project. The script never creates a service-account key. The £25 budget is created only with `CONFIRM_BUDGET=25`.

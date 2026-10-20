@@ -77,13 +77,51 @@ DATAFORM="ordinary-dataform@${PROJECT_ID}.iam.gserviceaccount.com"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 USER="$(gcloud config get-value account)"
 
+# Dataset IAM conditions are not allowlisted on this project. Grant the
+# primitive dataset role through the access list instead.
 grant_dataset() {
   local dataset="$1" member="$2" role="$3"
-  bq add-iam-policy-binding \
-    --member="serviceAccount:${member}" \
-    --role="$role" \
-    "${PROJECT_ID}:${dataset}"
-  say "Granted $role on $dataset to $member"
+  local primitive
+  case "$role" in
+    roles/bigquery.dataEditor) primitive="WRITER" ;;
+    roles/bigquery.dataViewer) primitive="READER" ;;
+    roles/bigquery.dataOwner) primitive="OWNER" ;;
+    WRITER|READER|OWNER) primitive="$role" ;;
+    *) die "Unknown dataset role: $role" ;;
+  esac
+  local src dst action
+  src="$(mktemp)"
+  dst="$(mktemp)"
+  bq --project_id="$PROJECT_ID" show --format=prettyjson "${PROJECT_ID}:${dataset}" >"$src"
+  action="$(
+    DATASET_JSON="$src" OUT_JSON="$dst" MEMBER="$member" ROLE="$primitive" python3 - <<'PY'
+import json, os
+with open(os.environ["DATASET_JSON"]) as f:
+    ds = json.load(f)
+member = os.environ["MEMBER"]
+role = os.environ["ROLE"]
+access = list(ds.get("access") or [])
+for entry in access:
+    if entry.get("userByEmail") == member and entry.get("role") == role:
+        print("exists")
+        raise SystemExit
+access.append({"role": role, "userByEmail": member})
+payload = {"access": access}
+for key in ("defaultTableExpirationMs", "description", "labels"):
+    if key in ds:
+        payload[key] = ds[key]
+with open(os.environ["OUT_JSON"], "w") as f:
+    json.dump(payload, f)
+print("update")
+PY
+  )"
+  if [[ "$action" == "update" ]]; then
+    bq update --source="$dst" "${PROJECT_ID}:${dataset}"
+    say "Granted $primitive on $dataset to $member"
+  else
+    say "Access exists: $primitive on $dataset for $member"
+  fi
+  rm -f "$src" "$dst"
 }
 
 grant_dataset ordinary_raw "$WRITER" roles/bigquery.dataEditor
@@ -108,7 +146,7 @@ gcloud iam service-accounts add-iam-policy-binding "$DATAFORM" \
   --member="user:${USER}" \
   --role="roles/iam.serviceAccountTokenCreator" --project="$PROJECT_ID" >/dev/null
 
-: "${VERCEL_TEAM_SLUG:?Set VERCEL_TEAM_SLUG to the 440hz team slug (not steves-projects-af4cd3c7) after confirming Team issuer mode.}"
+: "${VERCEL_TEAM_SLUG:?Set VERCEL_TEAM_SLUG to the team slug in the Vercel project URL, with OIDC issuer mode set to Team.}"
 VERCEL_PROJECT_SLUG="${VERCEL_PROJECT_SLUG:-theordinary}"
 
 gcloud iam workload-identity-pools describe vercel --location=global --project="$PROJECT_ID" >/dev/null 2>&1 \
@@ -152,16 +190,21 @@ gcloud iam service-accounts add-iam-policy-binding "$DATAFORM" \
   --project="$PROJECT_ID" >/dev/null
 
 if [[ "${SKIP_BUDGET:-}" != "1" ]]; then
-  say "Creating a £25 monthly budget requires confirmation. Re-run with CONFIRM_BUDGET=25 to create it."
+  say "A £25 monthly budget is created only when CONFIRM_BUDGET=25."
   if [[ "${CONFIRM_BUDGET:-}" == "25" ]]; then
-    gcloud billing budgets create \
-      --billing-account="$BILLING_ID" \
-      --display-name="the-ordinary-512212 monthly" \
-      --budget-amount=25GBP \
-      --filter-projects="projects/${PROJECT_ID}" \
-      --threshold-rule=percent=0.5 \
-      --threshold-rule=percent=0.9 \
-      --threshold-rule=percent=1.0 || say "Budget create failed. Create the £25 budget in the console if the CLI flags differ."
+    existing="$(gcloud billing budgets list --billing-account="$BILLING_ID" --format='value(displayName)' || true)"
+    if printf '%s\n' "$existing" | grep -qx "the-ordinary-512212 monthly"; then
+      say "Budget exists: the-ordinary-512212 monthly"
+    else
+      gcloud billing budgets create \
+        --billing-account="$BILLING_ID" \
+        --display-name="the-ordinary-512212 monthly" \
+        --budget-amount=25GBP \
+        --filter-projects="projects/${PROJECT_ID}" \
+        --threshold-rule=percent=0.5 \
+        --threshold-rule=percent=0.9 \
+        --threshold-rule=percent=1.0 || say "Budget create failed. Create the £25 budget in the console if the CLI flags differ."
+    fi
   fi
 fi
 
