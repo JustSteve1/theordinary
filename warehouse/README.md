@@ -15,9 +15,10 @@
 ```bash
 gcloud auth login
 gcloud auth application-default login
-export VERCEL_TEAM_SLUG="steves-projects-af4cd3c7"
-# Project URL: https://vercel.com/steves-projects-af4cd3c7/theordinary
-# OIDC Federation must be in Team issuer mode.
+export VERCEL_TEAM_SLUG="440hz"
+export VERCEL_PROJECT_SLUG="theordinary"
+# Live project: https://vercel.com/440hz/theordinary (theordinary.club)
+# OIDC Federation on team 440hz is Team issuer mode.
 bash warehouse/bootstrap.sh
 CONFIRM_BUDGET=25 bash warehouse/bootstrap.sh
 ```

@@ -163,6 +163,15 @@ gcloud iam workload-identity-pools providers describe vercel \
     --allowed-audiences="https://vercel.com/${VERCEL_TEAM_SLUG}" \
     --attribute-mapping="google.subject=assertion.sub"
 
+# Issuer and audience follow the team. A re-run updates them in place.
+gcloud iam workload-identity-pools providers update-oidc vercel \
+  --workload-identity-pool=vercel \
+  --location=global \
+  --project="$PROJECT_ID" \
+  --issuer-uri="https://oidc.vercel.com/${VERCEL_TEAM_SLUG}" \
+  --allowed-audiences="https://vercel.com/${VERCEL_TEAM_SLUG}" \
+  --attribute-mapping="google.subject=assertion.sub" >/dev/null
+
 VERCEL_PRINCIPAL="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/vercel/subject/owner:${VERCEL_TEAM_SLUG}:project:${VERCEL_PROJECT_SLUG}:environment:production"
 gcloud iam service-accounts add-iam-policy-binding "$WRITER" \
   --member="$VERCEL_PRINCIPAL" \
