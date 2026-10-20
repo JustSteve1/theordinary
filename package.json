@@ -14,6 +14,7 @@
     "test:warehouse": "tsx --test src/platform/warehouse/warehouse.test.ts src/platform/integrations/whoop-sync.test.ts src/platform/experiments/experiments.test.ts",
     "warehouse:ensure": "tsx scripts/warehouse-ensure.ts",
     "warehouse:status": "tsx scripts/warehouse-status.ts",
+    "warehouse:land-user1": "tsx scripts/warehouse-land-user1.ts",
     "experiments:activate": "tsx scripts/experiments-activate.ts",
     "experiments:end": "tsx scripts/experiments-end.ts",
     "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx,md}\"",

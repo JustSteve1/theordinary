@@ -33,6 +33,23 @@ London times:
 
 Vercel sends `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules (100 cron jobs per project), so the three routes stay separate.
 
+## Local landing with Kedro
+
+Kedro in [`warehouse/kedro`](../../warehouse/kedro) is the local catalog. It does not replace these crons or Dataform, and it has no schedule of its own.
+
+`kedro run` from that directory uses the `dev` environment. It reads Neon for a status row (health consent, whether WHOOP is connected, whether a Bee account token exists) and writes gitignored parquet under `warehouse/kedro/data/`. It does not write BigQuery. WHOOP records and Bee items are not stored in Neon, so those local frames are empty until you sample London.
+
+Landing your rows in `ordinary_raw` does not need a Vercel deploy. It does need Application Default Credentials that can impersonate `ordinary-vercel-writer`, `DATABASE_URL`, `USER1_EMAIL`, and the production `MEMBER_KEY_SECRET`. From `warehouse/kedro`:
+
+```bash
+kedro run --env=prod --pipelines=land_user1
+kedro run --env=prod --pipelines=sample_raw
+```
+
+`land_user1` syncs that member's WHOOP window (30 days unless `days` is changed) and then runs the same export the 03:00 cron runs. `sample_raw` reads at most 100 rows from each WHOOP and Bee raw table, leaves out the payload column, and writes `data/08_reporting/`. A plain `kedro run` cannot select the prod catalog.
+
+The scheduled path still needs this branch deployed. Production crons run on theordinary.club, and the 04:00 Dataform job runs from `main`. After raw rows exist, Dataform can also be run once locally by impersonating `ordinary-dataform` if you want feature tables before that schedule exists.
+
 ## Re-run a night
 
 ```bash

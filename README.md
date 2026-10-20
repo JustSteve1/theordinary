@@ -79,7 +79,7 @@ Analysis lives in BigQuery in London (`europe-west2`, project `the-ordinary-5122
 
 Nightly, in London time: WHOOP sync at 02:30, app and Bee metadata export at 03:00, Dataform at 04:00, experiment decisions at 05:00. Vercel calls the three cron routes with `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules, so they stay as three routes. Each route returns quietly when the warehouse env vars are missing.
 
-Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials.
+Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials. A Kedro project at [`warehouse/kedro`](warehouse/kedro) is the local catalog: a plain run stays off BigQuery, and `--env=prod --pipelines=land_user1` is what writes raw rows before this is deployed.
 
 New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`. `WAREHOUSE_IMPERSONATE` is local only.
 

@@ -27,6 +27,10 @@ The script skips resources that already exist. Output values go to `warehouse/bo
 
 Secrets (`MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`) are generated locally with `openssl rand -hex 32` and added to Vercel Production. They are not written by this script.
 
+## Local catalog
+
+[`kedro`](kedro) names dev and prod data for a recorded local run. `kedro run` stays on local parquet. `kedro run --env=prod --pipelines=land_user1` is the command that writes `ordinary_raw`, by calling the TypeScript export. See the runbook.
+
 ## Undo
 
 - Datasets: `bq rm -r -f -d the-ordinary-512212:ordinary_raw` (repeat per dataset). This deletes analysis data.

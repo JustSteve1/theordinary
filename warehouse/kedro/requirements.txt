@@ -1,0 +1,9 @@
+kedro~=1.7.0
+kedro-datasets>=9
+pandas>=2.2
+pyarrow>=16
+pandas-gbq>=0.26
+db-dtypes
+google-cloud-bigquery>=3
+psycopg[binary]>=3.2
+pytest~=7.2
