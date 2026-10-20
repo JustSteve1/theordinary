@@ -1,0 +1,12 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["effects"],
+  description: "Associations only. not_causal is true on every row."
+}
+
+js {
+  const { estimateSql } = require("includes/estimator");
+}
+
+${estimateSql(ref("observational_frame"), { gitSha: dataform.projectConfig.vars.gitSha, notCausal: true })}

@@ -1,0 +1,45 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"]
+}
+
+select
+  member_key,
+  date,
+  w.recovery_score,
+  w.hrv_rmssd_ms,
+  w.resting_hr_bpm,
+  w.spo2_pct,
+  w.skin_temp_c,
+  w.respiratory_rate,
+  w.sleep_asleep_min,
+  w.sleep_deep_min,
+  w.sleep_rem_min,
+  w.sleep_efficiency_pct,
+  w.sleep_performance_pct,
+  w.sleep_consistency_pct,
+  w.sleep_disturbances,
+  w.sleep_midpoint_min,
+  w.day_strain,
+  w.workout_count,
+  w.workout_strain_sum,
+  b.conversation_count,
+  b.conversation_minutes,
+  b.journal_count,
+  b.first_activity_min,
+  r.accuracy,
+  r.richness,
+  r.intrusion,
+  r.dimension_mean,
+  r.lag_days,
+  r.poor_sleep,
+  r.unwell_or_alcohol,
+  array_concat(
+    ifnull(w.whoop_ids, []),
+    ifnull(b.bee_ids, []),
+    if(r.checkin_id is null, [], [r.checkin_id])
+  ) as source_ids
+from ${ref("whoop_daily")} w
+full outer join ${ref("bee_daily_activity")} b using (member_key, date)
+full outer join ${ref("recall_daily")} r using (member_key, date)

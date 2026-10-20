@@ -1,0 +1,25 @@
+config {
+  type: "assertion",
+  schema: "ordinary_effects_test",
+  tags: ["effects_test"]
+}
+
+select experiment_id, beta, p025, p975, status
+from ${ref("effect_estimates")}
+where experiment_id = 'A'
+  and (
+    status != 'ok'
+    or p025 > 4
+    or p975 < 4
+    or p025 <= 0
+    or abs(beta - 4) >= 2.5
+  )
+union all
+select experiment_id, beta, p025, p975, status
+from ${ref("effect_estimates")}
+where experiment_id = 'B'
+  and (
+    status != 'ok'
+    or p025 > 0
+    or p975 < 0
+  )

@@ -1,0 +1,6 @@
+config { type: "assertion", schema: "ordinary_core", tags: ["spine"] }
+
+select max(ingested_at) as newest
+from ${ref("whoop_recovery")}
+having newest is not null
+   and newest < timestamp_sub(current_timestamp(), interval 36 hour)

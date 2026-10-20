@@ -1,0 +1,31 @@
+{
+  "id": "first-experiment",
+  "version": 1,
+  "status": "draft",
+  "title": "First daily experiment",
+  "hypothesis": "TODO",
+  "design": "micro_randomised_daily",
+  "decision_time_local": "08:00",
+  "arms": [
+    { "name": "control", "instruction": null },
+    { "name": "treatment", "instruction": "TODO" }
+  ],
+  "treatment_probability": 0.5,
+  "availability": {
+    "requires_whoop_yesterday": true,
+    "skip_dates": []
+  },
+  "primary_outcome": {
+    "feature_id": "whoop.hrv_rmssd_ms.dev",
+    "offset_days": 1,
+    "direction": "increase"
+  },
+  "secondary_outcomes": [
+    { "feature_id": "recall.accuracy", "offset_days": 0, "direction": "increase" },
+    { "feature_id": "recall.richness", "offset_days": 0, "direction": "increase" },
+    { "feature_id": "bee.conversation_minutes", "offset_days": 0, "direction": "increase" }
+  ],
+  "min_days": 42,
+  "max_days": 70,
+  "notes": "offset_days is relative to the decision date. 0 is the same local day. 1 is the next morning, because sleep and recovery are dated to the morning they describe."
+}

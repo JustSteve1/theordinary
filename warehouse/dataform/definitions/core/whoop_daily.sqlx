@@ -1,0 +1,148 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"],
+  description: "One WHOOP row per member per local date. Sleep and recovery use the morning the sleep ended. Cycles use the local date of cycle start (the waking period). Workouts use the local start date. Naps are excluded."
+}
+
+with sleep as (
+  select
+    member_key,
+    record_id,
+    start_at,
+    end_at,
+    timezone_offset,
+    date(end_at, coalesce(nullif(timezone_offset, ''), 'Europe/London')) as date,
+    safe_cast(json_value(payload, '$.score.stage_summary.total_light_sleep_time_milli') as float64) as light_ms,
+    safe_cast(json_value(payload, '$.score.stage_summary.total_slow_wave_sleep_time_milli') as float64) as deep_ms,
+    safe_cast(json_value(payload, '$.score.stage_summary.total_rem_sleep_time_milli') as float64) as rem_ms,
+    safe_cast(json_value(payload, '$.score.stage_summary.disturbance_count') as float64) as disturbances,
+    safe_cast(json_value(payload, '$.score.respiratory_rate') as float64) as respiratory_rate,
+    safe_cast(json_value(payload, '$.score.sleep_efficiency_percentage') as float64) as efficiency,
+    safe_cast(json_value(payload, '$.score.sleep_performance_percentage') as float64) as performance,
+    safe_cast(json_value(payload, '$.score.sleep_consistency_percentage') as float64) as consistency,
+    lower(json_value(payload, '$.nap')) = 'true' as nap
+  from ${ref("whoop_sleep_latest")}
+  where end_at is not null
+),
+sleep_day as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, date order by end_at desc) as row_num
+    from sleep
+    where date is not null and nap is not true
+  )
+  where row_num = 1
+),
+recovery as (
+  select
+    r.member_key,
+    r.record_id,
+    s.date,
+    safe_cast(json_value(r.payload, '$.score.recovery_score') as float64) as recovery_score,
+    safe_cast(json_value(r.payload, '$.score.hrv_rmssd_milli') as float64) as hrv_rmssd_ms,
+    safe_cast(json_value(r.payload, '$.score.resting_heart_rate') as float64) as resting_hr_bpm,
+    safe_cast(json_value(r.payload, '$.score.spo2_percentage') as float64) as spo2_pct,
+    safe_cast(json_value(r.payload, '$.score.skin_temp_celsius') as float64) as skin_temp_c
+  from ${ref("whoop_recovery_latest")} r
+  join sleep s
+    on s.member_key = r.member_key
+   and s.record_id = json_value(r.payload, '$.sleep_id')
+),
+recovery_day as (
+  select * except (row_num)
+  from (
+    select *, row_number() over (partition by member_key, date order by record_id) as row_num
+    from recovery
+    where date is not null
+  )
+  where row_num = 1
+),
+cycles as (
+  select
+    member_key,
+    record_id,
+    date(start_at, coalesce(nullif(timezone_offset, ''), 'Europe/London')) as date,
+    safe_cast(json_value(payload, '$.score.strain') as float64) as day_strain
+  from ${ref("whoop_cycle_latest")}
+  where start_at is not null
+),
+cycle_day as (
+  select * except (row_num)
+  from (
+    select *, row_number() over (partition by member_key, date order by record_id) as row_num
+    from cycles
+    where date is not null
+  )
+  where row_num = 1
+),
+workouts as (
+  select
+    member_key,
+    record_id,
+    date(start_at, coalesce(nullif(timezone_offset, ''), 'Europe/London')) as date,
+    safe_cast(json_value(payload, '$.score.strain') as float64) as strain
+  from ${ref("whoop_workout_latest")}
+  where start_at is not null
+),
+workout_day as (
+  select
+    member_key,
+    date,
+    count(*) as workout_count,
+    sum(strain) as workout_strain_sum,
+    array_agg(distinct record_id) as ids
+  from workouts
+  where date is not null
+  group by 1, 2
+)
+select
+  member_key,
+  date,
+  r.recovery_score,
+  r.hrv_rmssd_ms,
+  r.resting_hr_bpm,
+  r.spo2_pct,
+  r.skin_temp_c,
+  s.respiratory_rate,
+  if(
+    s.light_ms is null and s.deep_ms is null and s.rem_ms is null,
+    null,
+    (ifnull(s.light_ms, 0) + ifnull(s.deep_ms, 0) + ifnull(s.rem_ms, 0)) / 60000
+  ) as sleep_asleep_min,
+  s.deep_ms / 60000 as sleep_deep_min,
+  s.rem_ms / 60000 as sleep_rem_min,
+  s.efficiency as sleep_efficiency_pct,
+  s.performance as sleep_performance_pct,
+  s.consistency as sleep_consistency_pct,
+  s.disturbances as sleep_disturbances,
+  if(
+    s.start_at is null or s.end_at is null,
+    null,
+    mod(
+      extract(hour from datetime(
+        timestamp_add(s.start_at, interval cast(timestamp_diff(s.end_at, s.start_at, second) / 2 as int64) second),
+        coalesce(nullif(s.timezone_offset, ''), 'Europe/London')
+      )) * 60
+      + extract(minute from datetime(
+        timestamp_add(s.start_at, interval cast(timestamp_diff(s.end_at, s.start_at, second) / 2 as int64) second),
+        coalesce(nullif(s.timezone_offset, ''), 'Europe/London')
+      )),
+      1440
+    )
+  ) as sleep_midpoint_min,
+  c.day_strain,
+  w.workout_count,
+  w.workout_strain_sum,
+  array_concat(
+    if(s.record_id is null, [], [s.record_id]),
+    if(r.record_id is null, [], [r.record_id]),
+    if(c.record_id is null, [], [c.record_id]),
+    ifnull(w.ids, [])
+  ) as whoop_ids
+from sleep_day s
+full outer join recovery_day r using (member_key, date)
+full outer join cycle_day c using (member_key, date)
+full outer join workout_day w using (member_key, date)

@@ -1,0 +1,5 @@
+config { type: "assertion", schema: "ordinary_features", tags: ["spine"] }
+
+select distinct feature_id
+from ${ref("features_daily")}
+where feature_id not in (select feature_id from ${ref("feature_registry")})

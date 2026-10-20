@@ -357,12 +357,16 @@ export async function saveHealthConsent(userId: string, resumeDone: boolean) {
     set health_version = ${recallDefaults.healthVersion},
         health_accepted_at = now()
   `;
+  const { markReexport } = await import("@/src/platform/warehouse/privacy");
+  await markReexport(userId);
   const step: OnboardingStep = resumeDone ? "done" : "microphone";
   await setStep(userId, step);
   return step;
 }
 
 export async function withdrawHealthConsent(userId: string) {
+  const { eraseMemberSafely } = await import("@/src/platform/warehouse/privacy");
+  await eraseMemberSafely(userId);
   await ready();
   await db()`
     update consents
@@ -663,6 +667,8 @@ export async function deleteSessions(userId: string) {
 }
 
 export async function deleteAccount(userId: string) {
+  const { eraseMemberSafely } = await import("@/src/platform/warehouse/privacy");
+  await eraseMemberSafely(userId);
   await ready();
   await db()`delete from members where id = ${userId}`;
 }

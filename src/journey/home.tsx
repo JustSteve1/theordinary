@@ -1,4 +1,5 @@
 import { finishTalk } from "@/src/features/check-in/actions";
+import { ExperimentCard } from "@/src/features/experiments/card";
 import { loadHomeContext } from "@/src/features/hello-world";
 import { HomeComposer } from "@/src/journey/home-composer";
 import { homeLaunch } from "@/src/journey/launch";
@@ -27,6 +28,7 @@ export async function HomeScreen({
           {notice}
         </p>
       ) : null}
+      <ExperimentCard userId={profile.id} />
       <HomeComposer
         state={state}
         name={profile.name.split(" ")[0] || profile.name}

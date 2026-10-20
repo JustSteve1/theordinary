@@ -1,0 +1,7 @@
+defaultProject: the-ordinary-512212
+defaultLocation: europe-west2
+defaultDataset: ordinary_core
+defaultAssertionDataset: ordinary_core
+dataformCoreVersion: 3.0.0
+vars:
+  gitSha: local

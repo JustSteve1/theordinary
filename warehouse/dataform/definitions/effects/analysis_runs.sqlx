@@ -1,0 +1,29 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["effects"]
+}
+
+with experiments as (
+  select * except (row_num)
+  from (
+    select
+      experiment_id,
+      version,
+      config_hash,
+      row_number() over (partition by experiment_id, version order by ingested_at desc) as row_num
+    from ${ref("experiments")}
+  )
+  where row_num = 1
+)
+select
+  e.run_id,
+  max(e.computed_at) as run_at,
+  '${dataform.projectConfig.vars.gitSha}' as git_sha,
+  e.experiment_id,
+  e.version,
+  any_value(x.config_hash) as config_hash,
+  '1.0.0' as registry_version
+from ${ref("effect_estimates_mrt")} e
+left join experiments x using (experiment_id, version)
+group by e.run_id, e.experiment_id, e.version

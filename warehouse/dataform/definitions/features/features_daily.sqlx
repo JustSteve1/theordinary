@@ -1,0 +1,11 @@
+config {
+  type: "table",
+  schema: "ordinary_features",
+  tags: ["spine"]
+}
+
+js {
+  const { featuresDailySql } = require("includes/features");
+}
+
+${featuresDailySql(ref("daily_wide"))}

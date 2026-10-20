@@ -1,0 +1,78 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["effects"],
+  description: "Associational exposures. not_causal. Not an experiment."
+}
+
+with series as (
+  select member_key, date, feature_id, value
+  from ${ref("features_daily")}
+  where feature_version = '1.0.0'
+),
+workout as (
+  select
+    v.member_key,
+    v.date as decision_date,
+    if(v.value > b.value, 1, 0) as a,
+    o.value as y
+  from series v
+  join series b
+    on b.member_key = v.member_key
+   and b.date = v.date
+   and b.feature_id = 'whoop.workout_strain_sum.baseline_28d'
+  left join series o
+    on o.member_key = v.member_key
+   and o.date = date_add(v.date, interval 1 day)
+   and o.feature_id = 'whoop.hrv_rmssd_ms.dev'
+  where v.feature_id = 'whoop.workout_strain_sum'
+),
+sleep as (
+  select
+    v.member_key,
+    v.date as decision_date,
+    if(v.value < b.value, 1, 0) as a,
+    o.value as y
+  from series v
+  join series b
+    on b.member_key = v.member_key
+   and b.date = v.date
+   and b.feature_id = 'whoop.sleep_asleep_min.baseline_28d'
+  left join series o
+    on o.member_key = v.member_key
+   and o.date = v.date
+   and o.feature_id = 'recall.accuracy'
+  where v.feature_id = 'whoop.sleep_asleep_min'
+),
+stacked as (
+  select 'observational_workout_hrv' as experiment_id, 'whoop.hrv_rmssd_ms.dev' as feature_id, * from workout
+  union all
+  select 'observational_sleep_recall', 'recall.accuracy', * from sleep
+),
+rates as (
+  select experiment_id, member_key, avg(a) as p
+  from stacked
+  group by 1, 2
+)
+select
+  s.member_key,
+  s.experiment_id,
+  1 as version,
+  s.feature_id,
+  'primary' as role,
+  'increase' as direction,
+  s.decision_date,
+  if(s.a = 1, 'exposed', 'not_exposed') as arm,
+  s.a,
+  r.p,
+  cast(null as string) as response,
+  s.y,
+  cast(null as float64) as y_pre,
+  s.y is null as y_missing,
+  concat(
+    s.member_key,
+    ':',
+    cast(div(date_diff(s.decision_date, min(s.decision_date) over (partition by s.experiment_id, s.member_key), day), 3) as string)
+  ) as block_id
+from stacked s
+join rates r using (experiment_id, member_key)
