@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:scoring": "tsx --test src/platform/scoring/scoring.test.ts",
+    "test:scoring": "tsx --test src/platform/scoring/scoring.test.ts src/platform/integrations/bee-export.test.ts",
     "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx,md}\"",
     "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx,md}\""
   },

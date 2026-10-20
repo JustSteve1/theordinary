@@ -146,6 +146,8 @@ create table if not exists checkins (
   created_at timestamptz not null default now()
 );
 
+alter table checkins add column if not exists bee_export jsonb;
+
 create table if not exists score_runs (
   id uuid primary key,
   checkin_id uuid not null references checkins (id) on delete cascade,

@@ -1,4 +1,5 @@
 import type { BeeSnapshot } from "@/src/platform/integrations/bee";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import { dateKey, londonHour } from "@/src/platform/recall/dates";
 import type { BeeFact, FactKind } from "@/src/platform/scoring/types";
 
@@ -9,17 +10,22 @@ export function factsForDay(bee: BeeSnapshot, targetDate: string | null): BeeFac
   if (!targetDate || bee.status !== "ok") {
     return [];
   }
+  const live = withoutOrdinaryEchoes(bee);
   const facts: BeeFact[] = [];
   const taken = new Set<FactKind>();
   const rows = [
-    ...bee.conversations.map((conversation) => ({
+    ...live.conversations.map((conversation) => ({
       at: conversation.startMs,
       text: [conversation.summary, conversation.detail].filter(Boolean).join(". "),
     })),
-    ...bee.dailies.map((daily) => ({ at: daily.atMs, text: daily.summary })),
+    ...live.journals.map((journal) => ({
+      at: journal.startMs,
+      text: [journal.summary, journal.detail].filter(Boolean).join(". "),
+    })),
+    ...live.dailies.map((daily) => ({ at: daily.atMs, text: daily.summary })),
   ];
   for (const row of rows) {
-    const day = dateKey(row.at, bee.timezone);
+    const day = dateKey(row.at, live.timezone);
     if (day !== targetDate) {
       continue;
     }
@@ -27,7 +33,7 @@ export function factsForDay(bee: BeeSnapshot, targetDate: string | null): BeeFac
     if (!text) {
       continue;
     }
-    const kind = classify(text, londonHour(row.at, bee.timezone), taken);
+    const kind = classify(text, londonHour(row.at, live.timezone), taken);
     taken.add(kind);
     facts.push({
       factId: `bee-${kind}-${row.at}`,
@@ -43,19 +49,20 @@ export function historyForLures(bee: BeeSnapshot, targetDate: string | null): Be
   if (bee.status !== "ok") {
     return [];
   }
-  return bee.conversations.flatMap((conversation) => {
-    const day = dateKey(conversation.startMs, bee.timezone);
+  const live = withoutOrdinaryEchoes(bee);
+  return [...live.conversations, ...live.journals].flatMap((note) => {
+    const day = dateKey(note.startMs, live.timezone);
     if (day === targetDate) {
       return [];
     }
-    const text = [conversation.summary, conversation.detail].filter(Boolean).join(". ").trim();
+    const text = [note.summary, note.detail].filter(Boolean).join(". ").trim();
     if (!text) {
       return [];
     }
-    const kind = classify(text, londonHour(conversation.startMs, bee.timezone), new Set());
+    const kind = classify(text, londonHour(note.startMs, live.timezone), new Set());
     return [
       {
-        factId: `hist-${kind}-${conversation.startMs}`,
+        factId: `hist-${kind}-${note.startMs}`,
         kind,
         text: text.slice(0, 500),
         day,

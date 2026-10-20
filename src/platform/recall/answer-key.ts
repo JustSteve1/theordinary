@@ -1,4 +1,5 @@
 import type { BeeSnapshot } from "@/src/platform/integrations/bee";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import { dateKey, formatDay } from "@/src/platform/recall/dates";
 import type { SessionRecord } from "@/src/platform/recall/types";
 import { cleanSessions, trendFor } from "@/src/platform/recall/trend";
@@ -119,14 +120,15 @@ export function buildAnswerKey(input: {
   const now = input.now ?? Date.now();
   const facts: AnswerFact[] = [];
 
-  if (input.bee.status === "ok") {
-    for (const conversation of input.bee.conversations) {
+  const bee = withoutOrdinaryEchoes(input.bee);
+  if (bee.status === "ok") {
+    for (const conversation of [...bee.conversations, ...bee.journals]) {
       const terms = keywords(conversation.summary);
       if (terms.length === 0) {
         continue;
       }
       const ageDays = (now - conversation.startMs) / 86_400_000;
-      const hour = hourInZone(conversation.startMs, input.bee.timezone);
+      const hour = hourInZone(conversation.startMs, bee.timezone);
       if (ageDays >= 6 && ageDays < 9 && !facts.some((fact) => fact.kind === "place")) {
         facts.push({
           id: `bee-place-${conversation.startMs}`,
@@ -157,7 +159,7 @@ export function buildAnswerKey(input: {
     }
   }
 
-  const latest = latestBeeDay(input.bee, now);
+  const latest = latestBeeDay(bee, now);
   if (latest) {
     const joined = keywords(latest.texts.join(" "));
     if (!facts.some((fact) => fact.kind === "event") && joined.length > 0) {
@@ -213,24 +215,25 @@ const BEE_DAY_LIMIT = 21;
 /** The newest Bee day within the last three weeks, used when yesterday is missing. */
 export function latestBeeDay(bee: BeeSnapshot, now = Date.now()) {
   const texts: { day: string; summary: string; evening: boolean }[] = [];
-  for (const conversation of bee.conversations) {
+  const live = withoutOrdinaryEchoes(bee);
+  for (const conversation of [...live.conversations, ...live.journals]) {
     const ageDays = (now - conversation.startMs) / 86_400_000;
     if (ageDays < 0 || ageDays > BEE_DAY_LIMIT) {
       continue;
     }
     texts.push({
-      day: dateKey(conversation.startMs, bee.timezone),
+      day: dateKey(conversation.startMs, live.timezone),
       summary: conversation.summary,
-      evening: hourInZone(conversation.startMs, bee.timezone) >= 17,
+      evening: hourInZone(conversation.startMs, live.timezone) >= 17,
     });
   }
-  for (const daily of bee.dailies) {
+  for (const daily of live.dailies) {
     const ageDays = (now - daily.atMs) / 86_400_000;
     if (ageDays < 0 || ageDays > BEE_DAY_LIMIT || !daily.summary) {
       continue;
     }
     texts.push({
-      day: dateKey(daily.atMs, bee.timezone),
+      day: dateKey(daily.atMs, live.timezone),
       summary: daily.summary,
       evening: false,
     });
