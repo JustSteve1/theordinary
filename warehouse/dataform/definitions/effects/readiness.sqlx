@@ -28,7 +28,7 @@ baseline as (
 coverage as (
   select
     count(distinct feature_id) as features,
-    count(*) as rows
+    count(*) as feature_rows
   from ${ref("features_daily")}
   where date >= date_sub(current_date('Europe/London'), interval 30 day)
 ),
@@ -92,7 +92,7 @@ from scores
 union all
 select 'feature_coverage',
   if(features > 0, 'pass', 'fail'),
-  concat(cast(features as string), ' features, ', cast(rows as string), ' rows in the last 30 days')
+  concat(cast(features as string), ' features, ', cast(feature_rows as string), ' rows in the last 30 days')
 from coverage
 union all
 select 'hrv_baseline_28d',
