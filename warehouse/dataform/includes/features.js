@@ -20,23 +20,16 @@ rolled as (
     a.member_key,
     a.date,
     a.feature_id,
-    a.value,
-    a.source_ids,
-    array(
-      select b.value
-      from parents b
-      where b.member_key = a.member_key
-        and b.feature_id = a.feature_id
-        and b.date between date_sub(a.date, interval 28 day) and date_sub(a.date, interval 1 day)
-    ) as prior,
-    (
-      select b.value
-      from parents b
-      where b.member_key = a.member_key
-        and b.feature_id = a.feature_id
-        and b.date = date_sub(a.date, interval 1 day)
-    ) as yesterday
+    any_value(a.value) as value,
+    any_value(a.source_ids) as source_ids,
+    array_agg(b.value ignore nulls) as prior,
+    max(if(b.date = date_sub(a.date, interval 1 day), b.value, null)) as yesterday
   from parents a
+  left join parents b
+    on b.member_key = a.member_key
+    and b.feature_id = a.feature_id
+    and b.date between date_sub(a.date, interval 28 day) and date_sub(a.date, interval 1 day)
+  group by a.member_key, a.date, a.feature_id
 ),
 scored as (
   select
@@ -88,19 +81,19 @@ midpoint_sd as (
     a.member_key,
     a.date,
     'whoop.sleep_midpoint_sd_7d' as feature_id,
-    (
-      select if(count(*) >= 7, stddev_samp(if(x > 720, x - 1440, x)), null)
-      from unnest(array(
-        select b.value
-        from midpoints b
-        where b.member_key = a.member_key
-          and b.date between date_sub(a.date, interval 7 day) and date_sub(a.date, interval 1 day)
-      )) x
+    if(
+      count(b.value) >= 7,
+      stddev_samp(if(b.value > 720, b.value - 1440, b.value)),
+      null
     ) as value,
     '1.0.0' as feature_version,
-    a.source_ids,
+    any_value(a.source_ids) as source_ids,
     current_timestamp() as computed_at
   from midpoints a
+  left join midpoints b
+    on b.member_key = a.member_key
+    and b.date between date_sub(a.date, interval 7 day) and date_sub(a.date, interval 1 day)
+  group by a.member_key, a.date
 )
 select * from base
 union all
