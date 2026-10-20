@@ -1,12 +1,15 @@
 import type { BeeSnapshot } from "@/src/platform/integrations/bee";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import { dateKey, yesterdayKey } from "@/src/platform/recall/dates";
 import type { Precheck, RecallProfile } from "@/src/platform/recall/types";
 
 export function beeCoversYesterday(bee: BeeSnapshot, now = Date.now()) {
   const yesterday = yesterdayKey(now);
+  const live = withoutOrdinaryEchoes(bee);
   return (
-    bee.conversations.some((item) => dateKey(item.startMs) === yesterday) ||
-    bee.dailies.some((item) => dateKey(item.atMs) === yesterday)
+    live.conversations.some((item) => dateKey(item.startMs) === yesterday) ||
+    live.journals.some((item) => dateKey(item.startMs) === yesterday) ||
+    live.dailies.some((item) => dateKey(item.atMs) === yesterday)
   );
 }
 

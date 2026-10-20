@@ -1,11 +1,12 @@
 import { loadBee } from "@/src/platform/integrations/bee";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import { dateKey, formatDay } from "@/src/platform/recall/dates";
 import type { ContextSource } from "@/src/platform/context/types";
 
 export const beeSource: ContextSource = {
   id: "bee",
   async load(userId) {
-    const bee = await loadBee(userId);
+    const bee = withoutOrdinaryEchoes(await loadBee(userId));
     if (bee.status !== "ok") {
       const reason =
         bee.status === "unauthorized"
@@ -49,6 +50,18 @@ export const beeSource: ContextSource = {
           conversation.detail !== conversation.summary
         ) {
           lines.push(`  ${conversation.detail}`);
+        }
+      }
+    }
+    if (bee.journals.length === 0) {
+      lines.push("Voice notes: none.");
+    } else {
+      lines.push("Voice notes:");
+      for (const journal of bee.journals) {
+        const day = formatDay(dateKey(journal.startMs, bee.timezone));
+        lines.push(`- ${day} ${journal.summary}`);
+        if (journal.detail && journal.detail !== journal.summary) {
+          lines.push(`  ${journal.detail}`);
         }
       }
     }

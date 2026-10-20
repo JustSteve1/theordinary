@@ -2,17 +2,32 @@ import http from "node:http";
 import https from "node:https";
 
 import { beeRootCa } from "@/src/platform/integrations/bee-ca";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import { readSecret } from "@/src/platform/integrations/secrets";
+
+export type BeeNote = { startMs: number; summary: string; detail: string };
 
 export type BeeSnapshot = {
   status: "ok" | "down" | "unauthorized";
   timezone: string;
   name: string | null;
-  conversations: { startMs: number; summary: string; detail: string }[];
+  conversations: BeeNote[];
+  journals: BeeNote[];
   dailies: { atMs: number; summary: string }[];
   facts: string[];
   openTodos: string[];
   via: "account" | "machine" | "none";
+};
+
+export type BeeAccess = {
+  origin: string;
+  token?: string;
+  via: BeeSnapshot["via"];
+};
+
+export type BeeRequestResult = {
+  http: number;
+  body: unknown;
 };
 
 const EMPTY: BeeSnapshot = {
@@ -20,6 +35,7 @@ const EMPTY: BeeSnapshot = {
   timezone: "Europe/London",
   name: null,
   conversations: [],
+  journals: [],
   dailies: [],
   facts: [],
   openTodos: [],
@@ -42,15 +58,22 @@ export async function verifyBeeToken(token: string) {
   return name ? { name } : { name: "Bee" };
 }
 
-export async function loadBee(userId?: string): Promise<BeeSnapshot> {
+export async function resolveBeeAccess(userId?: string): Promise<BeeAccess> {
   if (userId) {
     const token = await readSecret(userId, "bee", "access_token");
     if (token) {
-      return loadBeeFrom(BEE_API, token, "account");
+      return { origin: BEE_API, token, via: "account" };
     }
   }
-  const origin = process.env.BEE_PROXY_URL ?? "http://127.0.0.1:8787";
-  return loadBeeFrom(origin, undefined, "machine");
+  return {
+    origin: process.env.BEE_PROXY_URL ?? "http://127.0.0.1:8787",
+    via: "machine",
+  };
+}
+
+export async function loadBee(userId?: string): Promise<BeeSnapshot> {
+  const access = await resolveBeeAccess(userId);
+  return loadBeeFrom(access.origin, access.token, access.via);
 }
 
 async function loadBeeFrom(
@@ -58,15 +81,17 @@ async function loadBeeFrom(
   token: string | undefined,
   via: BeeSnapshot["via"],
 ): Promise<BeeSnapshot> {
-  const [profile, conversations, dailies, todos, facts] = await Promise.all([
-    beeGet(origin, "/v1/me", token),
-    beeGet(origin, "/v1/conversations?limit=25", token),
-    beeGet(origin, "/v1/daily?limit=14", token),
-    beeGet(origin, "/v1/todos?limit=30", token),
-    beeGet(origin, "/v1/facts?limit=20", token),
-  ]);
+  const [profile, conversations, journals, dailies, todos, facts] =
+    await Promise.all([
+      beeGet(origin, "/v1/me", token),
+      beeGet(origin, "/v1/conversations?limit=25", token),
+      beeGet(origin, "/v1/journals?limit=25", token),
+      beeGet(origin, "/v1/daily?limit=14", token),
+      beeGet(origin, "/v1/todos?limit=30", token),
+      beeGet(origin, "/v1/facts?limit=20", token),
+    ]);
 
-  const responses = [profile, conversations, dailies, todos, facts];
+  const responses = [profile, conversations, journals, dailies, todos, facts];
   if (responses.every((response) => response === "down")) {
     return EMPTY;
   }
@@ -87,29 +112,20 @@ async function loadBeeFrom(
     .filter(Boolean)
     .join(" ");
 
-  return {
+  return withoutOrdinaryEchoes({
     status: "ok",
     timezone,
     name: name || null,
     via,
-    conversations: arrayField(record(conversations), "conversations").flatMap(
-      (item) => {
-        const startMs = toMs(item.start_time ?? item.created_at);
-        if (startMs === null) {
-          return [];
-        }
-        const summary =
-          stringField(item, "short_summary") ??
-          stringField(item, "title") ??
-          "A conversation";
-        return [
-          {
-            startMs,
-            summary,
-            detail: clip(stringField(item, "summary") ?? summary, 500),
-          },
-        ];
-      },
+    conversations: notesFrom(
+      record(conversations),
+      ["conversations"],
+      "A conversation",
+    ),
+    journals: notesFrom(
+      record(journals),
+      ["journals", "notes", "voice_notes"],
+      "A journal",
     ),
     dailies: arrayField(
       record(dailies),
@@ -150,7 +166,65 @@ async function loadBeeFrom(
       const text = stringField(item, "text");
       return text ? [text] : [];
     }),
-  };
+  });
+}
+
+export async function beeRequest(
+  origin: string,
+  path: string,
+  options: {
+    token?: string;
+    method?: string;
+    body?: unknown;
+    timeoutMs?: number;
+  } = {},
+): Promise<BeeRequestResult> {
+  const target = new URL(path, origin);
+  const method = options.method ?? "GET";
+  const payload =
+    options.body === undefined ? undefined : JSON.stringify(options.body);
+  return new Promise((resolve) => {
+    const client = target.protocol === "http:" ? http : https;
+    const request = client.request(
+      target,
+      {
+        method,
+        headers: {
+          accept: "application/json",
+          ...(payload ? { "content-type": "application/json" } : {}),
+          ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+        },
+        timeout: options.timeoutMs ?? 8000,
+        ...(target.hostname.endsWith("bee.amazon.dev") ? { ca: beeRootCa } : {}),
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          const httpStatus = response.statusCode ?? 0;
+          const raw = Buffer.concat(chunks).toString("utf8");
+          resolve({ http: httpStatus, body: parseBody(raw) });
+        });
+      },
+    );
+    request.on("timeout", () => {
+      request.destroy();
+      resolve({ http: 0, body: null });
+    });
+    request.on("error", (error) => {
+      console.info(
+        JSON.stringify({
+          beeDown: true,
+          host: target.host,
+          method,
+          code: "code" in error ? error.code : undefined,
+          reason: error.message,
+        }),
+      );
+      resolve({ http: 0, body: null });
+    });
+    request.end(payload);
+  });
 }
 
 async function beeGet(
@@ -158,63 +232,72 @@ async function beeGet(
   path: string,
   token?: string,
 ): Promise<Record<string, unknown> | "down" | "unauthorized"> {
-  const target = new URL(path, origin);
-  return new Promise((resolve) => {
-    const client = target.protocol === "http:" ? http : https;
-    const request = client.request(
-      target,
-      {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          ...(token ? { authorization: `Bearer ${token}` } : {}),
-        },
-        timeout: 8000,
-        ...(target.hostname.endsWith("bee.amazon.dev") ? { ca: beeRootCa } : {}),
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("end", () => {
-          const status = response.statusCode ?? 0;
-          if (status === 401 || status === 403) {
-            resolve("unauthorized");
-            return;
-          }
-          if (status < 200 || status >= 300) {
-            resolve({});
-            return;
-          }
-          try {
-            const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
-            if (!body || typeof body !== "object" || Array.isArray(body)) {
-              resolve({});
-              return;
-            }
-            resolve(body as Record<string, unknown>);
-          } catch {
-            resolve({});
-          }
-        });
-      },
+  const result = await beeRequest(origin, path, { token });
+  if (result.http === 0) {
+    return "down";
+  }
+  if (result.http === 401 || result.http === 403) {
+    return "unauthorized";
+  }
+  if (result.http < 200 || result.http >= 300) {
+    return {};
+  }
+  if (Array.isArray(result.body)) {
+    return { items: result.body };
+  }
+  if (result.body && typeof result.body === "object") {
+    return result.body as Record<string, unknown>;
+  }
+  return {};
+}
+
+function notesFrom(
+  payload: Record<string, unknown>,
+  keys: string[],
+  fallback: string,
+): BeeNote[] {
+  const rows = arrayField(payload, ...keys, "items");
+  return rows.flatMap((item) => {
+    const startMs = toMs(
+      item.start_time ??
+        item.created_at ??
+        item.createdAt ??
+        item.updated_at ??
+        item.date,
     );
-    request.on("timeout", () => {
-      request.destroy();
-      resolve("down");
-    });
-    request.on("error", (error) => {
-      console.info(
-        JSON.stringify({
-          beeDown: true,
-          host: target.host,
-          code: "code" in error ? error.code : undefined,
-          reason: error.message,
-        }),
-      );
-      resolve("down");
-    });
-    request.end();
+    if (startMs === null) {
+      return [];
+    }
+    const summary =
+      stringField(item, "short_summary") ??
+      stringField(item, "title") ??
+      stringField(item, "text") ??
+      fallback;
+    const detail =
+      stringField(item, "summary") ??
+      stringField(item, "text") ??
+      stringField(item, "cleanedUpText") ??
+      summary;
+    return [
+      {
+        startMs,
+        summary: clip(summary, 240),
+        detail: clip(detail, 500),
+      },
+    ];
   });
+}
+
+function parseBody(raw: string): unknown {
+  const text = raw.trim();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 function record(

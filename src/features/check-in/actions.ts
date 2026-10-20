@@ -4,6 +4,10 @@ import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 
 import { loadBee } from "@/src/platform/integrations/bee";
+import {
+  buildBeeExportPayload,
+  pushCheckinToBee,
+} from "@/src/platform/integrations/bee-export";
 import { loadDossier } from "@/src/platform/recall/dossier";
 import { beeCoversYesterday, precheck } from "@/src/platform/recall/capture";
 import { clearReveal, writeReveal } from "@/src/platform/recall/cookies";
@@ -183,6 +187,19 @@ export async function finishTalk(payload: TalkPayload): Promise<FinishResult> {
       matcherTier: v2.matcherTier,
       payload: v2,
     });
+    try {
+      await pushCheckinToBee(
+        profile.id,
+        session.id,
+        buildBeeExportPayload({
+          talkText: spoken,
+          recordedAt: session.recordedAt,
+          targetDate,
+        }),
+      );
+    } catch {
+      // Local save already succeeded. Bee can catch up on a later check-in.
+    }
     if (profile.settings.micStatus !== "granted") {
       await updateMicStatus(profile.id, "granted");
     }

@@ -1,4 +1,5 @@
 import type { BeeSnapshot } from "@/src/platform/integrations/bee";
+import { withoutOrdinaryEchoes } from "@/src/platform/integrations/bee-echo";
 import type {
   WhoopScore,
   WhoopSnapshot,
@@ -30,26 +31,28 @@ export function scoreMembership(input: {
   const today = dateKey(input.now, timeZone);
   const ledger: LedgerRow[] = [];
 
-  if (input.bee.status === "ok") {
+  const bee = withoutOrdinaryEchoes(input.bee);
+  if (bee.status === "ok") {
     const conversationDays = new Set<string>();
-    for (const conversation of input.bee.conversations) {
-      const day = dateKey(conversation.startMs, timeZone);
+    for (const note of [
+      ...bee.conversations.map((item) => ({ ...item, label: "Conversation" })),
+      ...bee.journals.map((item) => ({ ...item, label: "Voice note" })),
+    ]) {
+      const day = dateKey(note.startMs, timeZone);
       if (!week.has(day) || conversationDays.has(day)) {
         continue;
       }
       conversationDays.add(day);
       ledger.push({
-        label: "Conversation",
+        label: note.label,
         detail:
-          day === today
-            ? conversation.summary
-            : `${conversation.summary} · ${day}`,
+          day === today ? note.summary : `${note.summary} · ${day}`,
         points: CONVERSATION_POINTS,
       });
     }
 
     const dailyDays = new Set<string>();
-    for (const daily of input.bee.dailies) {
+    for (const daily of bee.dailies) {
       const day = dateKey(daily.atMs, timeZone);
       if (!week.has(day) || dailyDays.has(day)) {
         continue;

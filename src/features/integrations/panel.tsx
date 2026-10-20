@@ -4,6 +4,7 @@ import {
   requestOrigin,
 } from "@/src/features/integrations/actions";
 import { loadBee } from "@/src/platform/integrations/bee";
+import { latestBeeExport } from "@/src/platform/integrations/bee-export";
 import { loadWhoop, whoopAppStatus } from "@/src/platform/integrations/whoop";
 import { getCurrentUser } from "@/src/platform/current-user";
 import { doorButton } from "@/src/platform/shell/door";
@@ -16,11 +17,12 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
     redirect("/login");
   }
 
-  const [bee, whoop, app, origin] = await Promise.all([
+  const [bee, whoop, app, origin, exportStatus] = await Promise.all([
     loadBee(user.id),
     loadWhoop(user.id),
     whoopAppStatus(user.id),
     requestOrigin(),
+    latestBeeExport(user.id),
   ]);
   const redirectUri = `${origin}/api/whoop/callback`;
   const savedBee = bee.via === "account" && bee.status === "ok";
@@ -32,8 +34,8 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
         Connections
       </h2>
       <p className="mt-2 max-w-md text-[13px] leading-5 text-stone-400">
-        Bee and WHOOP are read from here. The chat uses this list, so another
-        account can be added without changing the chat.
+        Bee and WHOOP connect here. Recordings move between Bee and The
+        Ordinary. Scoring stays in The Ordinary.
       </p>
 
       <div className="mt-6 rounded-[10px] border border-white/10 p-4">
@@ -42,13 +44,18 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
         </h3>
         <p className="mt-3 text-[13px] leading-5 text-stone-300">
           {savedBee
-            ? `Connected as ${bee.name ?? "your Bee account"}.`
+            ? `Connected as ${bee.name ?? "your Bee account"}. Check-ins you record here are sent to Bee as the spoken entry only.`
             : bee.status === "ok"
-              ? `This machine is signed in${bee.name ? ` as ${bee.name}` : ""}. Save a token to keep it on your account.`
+              ? `This machine is signed in${bee.name ? ` as ${bee.name}` : ""}. Save a token to keep recordings moving with your account.`
               : bee.status === "unauthorized"
                 ? "The saved Bee token was not accepted."
                 : "Not connected. Paste the bearer token from your Bee developer login."}
         </p>
+        {exportLine(exportStatus) ? (
+          <p className="mt-3 text-[13px] leading-5 text-stone-400">
+            {exportLine(exportStatus)}
+          </p>
+        ) : null}
         <BeeTokenForm />
         {bee.via === "account" ? (
           <form action={disconnectBee} className="mt-3">
@@ -117,4 +124,33 @@ export async function IntegrationsPanel({ notice }: { notice?: string }) {
       </div>
     </section>
   );
+}
+
+function exportLine(
+  exportStatus: Awaited<ReturnType<typeof latestBeeExport>>,
+) {
+  if (!exportStatus) {
+    return null;
+  }
+  const { record } = exportStatus;
+  if (record.status === "ok") {
+    const kind =
+      record.kind === "journal"
+        ? "journal"
+        : record.kind === "conversation"
+          ? "conversation"
+          : record.kind === "fact"
+            ? "fact"
+            : "recording";
+    return `Last check-in reached Bee as a ${kind}.`;
+  }
+  if (record.status === "pending") {
+    return "Last check-in has not reached Bee yet.";
+  }
+  if (record.status === "declined") {
+    return record.error
+      ? `Bee declined the last check-in. ${record.error}`
+      : "Bee declined the last check-in.";
+  }
+  return null;
 }
