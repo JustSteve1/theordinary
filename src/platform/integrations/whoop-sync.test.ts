@@ -6,7 +6,6 @@ import {
   parseWhoopWebhook,
   rowsForWebhook,
   signatureMatches,
-  stripUserId,
   syncAllowed,
   tombstone,
   whoopSignature,
@@ -41,15 +40,14 @@ test("429 retries then gives up", async () => {
   assert.equal(calls, 6);
 });
 
-test("user_id is stripped from payloads", () => {
-  const stripped = stripUserId({
-    id: "sleep-1",
-    user_id: 99,
-    score: { userId: 99, recovery_score: 70 },
-  }) as { user_id?: unknown; score: { userId?: unknown; recovery_score: number } };
-  assert.equal(stripped.user_id, undefined);
-  assert.equal(stripped.score.userId, undefined);
-  assert.equal(stripped.score.recovery_score, 70);
+test("WHOOP user id stays on the raw payload", async () => {
+  const fetchImpl = async () =>
+    Response.json({ id: "sleep-1", user_id: 99, score: { userId: 99, recovery_score: 70 } });
+  const updated = await rowsForWebhook("token", { id: "sleep-1", type: "sleep.updated" }, "member", fetchImpl);
+  const payload = updated?.row.payload as { user_id?: unknown; score: { userId?: unknown; recovery_score: number } };
+  assert.equal(payload.user_id, 99);
+  assert.equal(payload.score.userId, 99);
+  assert.equal(payload.score.recovery_score, 70);
 });
 
 test("webhook signature accepts a valid body and rejects a tampered one", () => {
@@ -96,7 +94,7 @@ test("recovery updates are loaded by cycle id after the sleep lookup", async () 
   );
   assert.equal(updated?.table, "whoop_recovery");
   assert.equal(updated?.row.record_id, "93845");
-  assert.equal((updated?.row.payload as { user_id?: unknown }).user_id, undefined);
+  assert.equal((updated?.row.payload as { user_id?: unknown }).user_id, 5);
 });
 
 test("members without consent are not synced", () => {

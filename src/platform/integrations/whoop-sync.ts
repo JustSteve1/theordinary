@@ -67,23 +67,6 @@ async function getJson(token: string, path: string, fetchImpl: FetchLike, attemp
   return (await response.json()) as Record<string, unknown>;
 }
 
-export function stripUserId(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(stripUserId);
-  }
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-  const next: Record<string, unknown> = {};
-  for (const [key, child] of Object.entries(value)) {
-    if (key === "user_id" || key === "userId") {
-      continue;
-    }
-    next[key] = stripUserId(child);
-  }
-  return next;
-}
-
 export function whoopSignature(secret: string, timestamp: string, raw: string) {
   return createHmac("sha256", secret).update(`${timestamp}${raw}`).digest("base64");
 }
@@ -105,7 +88,7 @@ function rowFrom(record: Record<string, unknown>, member: string, source: WhoopS
     timezone_offset: typeof record.timezone_offset === "string" ? record.timezone_offset : null,
     score_state: typeof record.score_state === "string" ? record.score_state : null,
     deleted: false,
-    payload: stripUserId(record),
+    payload: record,
     source,
     ingested_at: new Date().toISOString(),
   };
