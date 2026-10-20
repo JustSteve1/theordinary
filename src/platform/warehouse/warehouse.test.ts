@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { experimentWarehouseRow, beeActivityRow, scoreRunRow } from "@/src/platform/warehouse/export";
+import { beeActivityRow, beeDailyDay, experimentWarehouseRow, scoreRunRow } from "@/src/platform/warehouse/export";
 import { estimateEffect, syntheticFrame } from "@/src/platform/warehouse/estimator";
 import { assertNoSpeech, isBannedColumn, SpeechFirewallError } from "@/src/platform/warehouse/firewall";
 import { memberKey } from "@/src/platform/warehouse/member-key";
@@ -111,6 +111,12 @@ test("bee echoes are flagged and carry no text", () => {
   assert.equal("detail" in row, false);
   assert.equal("text" in row, false);
   assert.doesNotThrow(() => assertNoSpeech("bee_activity", [row]));
+});
+
+test("bee daily summaries are dated by their millisecond stamp in London time", () => {
+  assert.equal(beeDailyDay({ date_time: 1791226815103, created_at: 1791226815103 }), "2026-10-05");
+  assert.equal(beeDailyDay({ created_at: Date.parse("2026-10-19T23:30:00.000Z") }), "2026-10-20");
+  assert.equal(beeDailyDay({ summary: "no stamp" }), null);
 });
 
 test("a withdrawn member is skipped", () => {

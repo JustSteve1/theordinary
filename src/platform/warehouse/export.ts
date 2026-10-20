@@ -317,12 +317,18 @@ async function exportBee(userId: string, member: string, since: string) {
     }),
   ];
   const dailies = await pageBee(access.origin, access.token, "/v1/daily", "daily_summaries", cutoff);
-  const dailyRows = dailies.map((item) => ({
-    member_key: member,
-    day: dateOnly(item.date ?? item.created_at) ?? since.slice(0, 10),
-    has_daily_summary: true,
-    ingested_at: new Date().toISOString(),
-  }));
+  const dailyRows = dailies.flatMap((item) => {
+    const day = beeDailyDay(item);
+    if (!day) return [];
+    return [
+      {
+        member_key: member,
+        day,
+        has_daily_summary: true,
+        ingested_at: new Date().toISOString(),
+      },
+    ];
+  });
   await loadRows("ordinary_raw", "bee_activity", activity);
   await loadRows("ordinary_raw", "bee_daily", dailyRows);
   await writeSync({ stream: "bee", scope: userId, cursor: new Date().toISOString(), success: true, error: null });
@@ -493,6 +499,21 @@ function iso(value: unknown) {
 function dateOnly(value: unknown) {
   const stamped = iso(value);
   return stamped ? stamped.slice(0, 10) : null;
+}
+
+// Bee daily summaries carry date_time and created_at as millisecond numbers.
+// The day is the London date, which is the day the summary describes.
+export function beeDailyDay(item: Record<string, unknown>) {
+  const at = ms(item.date_time ?? item.date ?? item.created_at);
+  if (at === null) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(at));
 }
 
 function ms(value: unknown) {
