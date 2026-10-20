@@ -95,6 +95,13 @@ export async function middleware(request: NextRequest) {
     return continueWithPath(request);
   }
 
+  // These routes authenticate themselves. While the site is unlaunched the
+  // fallback below rewrites everything else to the homepage, which would
+  // swallow the nightly crons and the WHOOP webhook.
+  if (pathname.startsWith("/api/cron/") || pathname === "/api/whoop/webhook") {
+    return continueWithPath(request);
+  }
+
   if (isPublicRoute(pathname)) {
     return continueWithPath(request);
   }
