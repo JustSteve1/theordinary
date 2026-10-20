@@ -1,0 +1,72 @@
+# Chosen only with `kedro run --env=prod`. Queries omit the WHOOP payload column.
+
+whoop_cycle:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, record_id, record_updated_at, start_at, end_at,
+           timezone_offset, score_state, deleted, source, ingested_at
+    from `the-ordinary-512212.ordinary_raw.whoop_cycle`
+    order by ingested_at desc
+    limit 100
+
+whoop_recovery:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, record_id, record_updated_at, start_at, end_at,
+           timezone_offset, score_state, deleted, source, ingested_at
+    from `the-ordinary-512212.ordinary_raw.whoop_recovery`
+    order by ingested_at desc
+    limit 100
+
+whoop_sleep:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, record_id, record_updated_at, start_at, end_at,
+           timezone_offset, score_state, deleted, source, ingested_at
+    from `the-ordinary-512212.ordinary_raw.whoop_sleep`
+    order by ingested_at desc
+    limit 100
+
+whoop_workout:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, record_id, record_updated_at, start_at, end_at,
+           timezone_offset, score_state, deleted, source, ingested_at
+    from `the-ordinary-512212.ordinary_raw.whoop_workout`
+    order by ingested_at desc
+    limit 100
+
+bee_activity:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, item_id, kind, start_at, end_at, duration_s,
+           is_ordinary_echo, ingested_at
+    from `the-ordinary-512212.ordinary_raw.bee_activity`
+    order by ingested_at desc
+    limit 100
+
+bee_daily:
+  type: pandas.GBQQueryDataset
+  project: the-ordinary-512212
+  load_args:
+    location: europe-west2
+  sql: |
+    select member_key, day, has_daily_summary, ingested_at
+    from `the-ordinary-512212.ordinary_raw.bee_daily`
+    order by ingested_at desc
+    limit 100

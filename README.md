@@ -26,7 +26,7 @@ No passkeys. No ORM. Queries are tagged-template SQL.
 app/                         Next routes and API handlers
 src/features/                Account, check-in, chat, onboarding, integrations, settings
 src/journey/                 Route-level screens composed from features
-src/platform/                Session, members, db, scoring, integrations, recall store
+src/platform/                Session, members, db, scoring, integrations, warehouse, experiments
 skills/episodic-recall/      Scoring config, methodology companion, Python session contract
 docs/recall/                 Screen pack and journey map
 ```
@@ -73,6 +73,16 @@ docs/recall/                 Screen pack and journey map
 
 **Defaults are isolated.** Journey defaults live in [`src/platform/recall/defaults.ts`](src/platform/recall/defaults.ts) so a product default can change without a redesign. When [`docs/recall/screens.md`](docs/recall/screens.md) and [`docs/recall/journey-map.md`](docs/recall/journey-map.md) disagree, the map wins and the conflict stays in [`docs/recall/open-decisions.md`](docs/recall/open-decisions.md).
 
+## Warehouse
+
+Analysis lives in BigQuery in London (`europe-west2`, project `the-ordinary-512212`). Neon stays the source of truth. Pages do not read BigQuery. Speech, names, emails, and member UUIDs stay out of the warehouse. Members are `member_key`, an HMAC of the account id. The runbook is [`docs/warehouse/RUNBOOK.md`](docs/warehouse/RUNBOOK.md). The feature list is [`docs/warehouse/features.md`](docs/warehouse/features.md).
+
+Nightly, in London time: WHOOP sync at 02:30, app and Bee metadata export at 03:00, Dataform at 04:00, experiment decisions at 05:00. Vercel calls the three cron routes with `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules, so they stay as three routes. Each route returns quietly when the warehouse env vars are missing.
+
+Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials. A Kedro project at [`warehouse/kedro`](warehouse/kedro) is the local catalog: a plain run stays off BigQuery, and `--env=prod --pipelines=land_user1` is what writes raw rows before this is deployed.
+
+New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`. `WAREHOUSE_IMPERSONATE` is local only.
+
 ## Routes
 
 | Screen | Route |
@@ -94,6 +104,8 @@ docs/recall/                 Screen pack and journey map
 | Chat | `/app/chat` |
 | Settings | `/settings` |
 | WHOOP OAuth | `/api/whoop/connect`, `/callback`, `/disconnect` |
+| WHOOP webhook | `/api/whoop/webhook` |
+| Nightly warehouse | `/api/cron/whoop-sync`, `/api/cron/warehouse-export`, `/api/cron/experiments-decide` |
 
 ## Data the scoring path cares about
 
@@ -124,8 +136,14 @@ pnpm dev
 pnpm lint
 pnpm build
 pnpm test:scoring
+pnpm test:warehouse
+pnpm warehouse:status
+pnpm experiments:activate first-experiment
+pnpm experiments:end first-experiment
 ```
 
 `pnpm test:scoring` runs the v2 scoring cases (including Tests A/B/C) and the Bee export firewall (payload is talk text only; Ordinary-tagged echoes are dropped; a successful export is not posted twice).
+
+`pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser, and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail. It does not pretend the warehouse is connected when the env vars are missing.
 
 The Python session contract is `python3 -m unittest test_log_session.py` from `skills/episodic-recall`.

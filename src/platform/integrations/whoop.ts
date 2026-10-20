@@ -216,7 +216,7 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
   }
 }
 
-async function accessTokenFor(connection: Connection) {
+export async function accessTokenFor(connection: Connection) {
   if (connection.expiresAt > Date.now() + 60_000) {
     return connection.accessToken;
   }

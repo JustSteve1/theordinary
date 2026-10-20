@@ -1,0 +1,56 @@
+config {
+  type: "table",
+  schema: "ordinary_effects_test",
+  tags: ["effects_test"],
+  description: "3 members x 120 days. AR(1) phi 0.5, innovation SD 8. Scenario A adds +4 on treated days. Scenario B adds 0."
+}
+
+with recursive members as (
+  select member from unnest(['m1', 'm2', 'm3']) as member
+),
+days as (
+  select day from unnest(generate_array(0, 119)) as day
+),
+grid as (
+  select member, day from members cross join days
+),
+draws as (
+  select
+    member,
+    day,
+    (mod(abs(farm_fingerprint(concat(member, '|u1|', cast(day as string)))), 1000000) + 0.5) / 1000000 as u1,
+    (mod(abs(farm_fingerprint(concat(member, '|u2|', cast(day as string)))), 1000000) + 0.5) / 1000000 as u2,
+    if(mod(abs(farm_fingerprint(concat(member, '|a|', cast(day as string)))), 1000) < 500, 1, 0) as a
+  from grid
+),
+noise as (
+  select
+    *,
+    sqrt(-2 * ln(u1)) * cos(2 * acos(-1) * u2) * 8 as shock
+  from draws
+),
+series as (
+  select member, day, a, shock as e
+  from noise
+  where day = 0
+  union all
+  select n.member, n.day, n.a, 0.5 * series.e + n.shock
+  from series
+  join noise n
+    on n.member = series.member
+   and n.day = series.day + 1
+)
+select
+  scenario as experiment_id,
+  1 as version,
+  'synthetic.outcome' as feature_id,
+  'primary' as role,
+  'increase' as direction,
+  series.member as member_key,
+  concat(series.member, ':', cast(div(series.day, 3) as string)) as block_id,
+  series.a,
+  0.5 as p,
+  series.e + if(scenario = 'A', 4, 0) * series.a as y,
+  cast(null as string) as response
+from series
+cross join unnest(['A', 'B']) as scenario

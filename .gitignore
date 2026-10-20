@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# warehouse environment output (no secrets, still environment-specific)
+warehouse/bootstrap.out.env
+warehouse/dataform/.df-credentials.json
+warehouse/dataform/node_modules
+warehouse/dataform/package-lock.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

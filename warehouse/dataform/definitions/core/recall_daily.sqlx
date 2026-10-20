@@ -1,0 +1,92 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"],
+  description: "Recall features keyed to target_date. Latest scorer per check-in. Practice excluded."
+}
+
+with checkins as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, checkin_id order by ingested_at desc) as row_num
+    from ${ref("app_checkins")}
+  )
+  where row_num = 1
+    and target_date is not null
+),
+scores as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (
+        partition by member_key, checkin_id
+        order by computed_at desc, ingested_at desc
+      ) as row_num
+    from ${ref("app_score_runs")}
+  )
+  where row_num = 1
+),
+sessions as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, session_id order by ingested_at desc) as row_num
+    from ${ref("app_recall_sessions")}
+  )
+  where row_num = 1
+),
+joined as (
+  select
+    c.member_key,
+    c.target_date as date,
+    c.checkin_id,
+    c.recorded_at,
+    s.accuracy,
+    s.richness,
+    s.intrusion,
+    (
+      select avg(value)
+      from unnest([
+        s.dim_people_level,
+        s.dim_places_level,
+        s.dim_conversations_level,
+        s.dim_decisions_level
+      ]) as value
+    ) as dimension_mean,
+    s.lag_days,
+    if(sess.session_id is null, null, if(sess.poor_sleep, 1, 0)) as poor_sleep,
+    if(sess.session_id is null, null, if(sess.unwell_or_alcohol, 1, 0)) as unwell_or_alcohol
+  from checkins c
+  join scores s using (member_key, checkin_id)
+  left join sessions sess
+    on sess.member_key = c.member_key
+   and sess.session_id = c.session_id
+  where s.practice is not true
+    and s.flag_practice is not true
+),
+latest as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, date order by recorded_at desc) as row_num
+    from joined
+  )
+  where row_num = 1
+)
+select
+  member_key,
+  date,
+  accuracy,
+  richness,
+  intrusion,
+  dimension_mean,
+  lag_days,
+  poor_sleep,
+  unwell_or_alcohol,
+  checkin_id
+from latest

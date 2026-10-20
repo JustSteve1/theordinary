@@ -1,0 +1,8 @@
+config { type: "assertion", schema: "ordinary_features", tags: ["spine"] }
+
+select member_key, date, feature_id
+from ${ref("features_daily")}
+where member_key is null
+   or date is null
+   or feature_id is null
+   or feature_version is null

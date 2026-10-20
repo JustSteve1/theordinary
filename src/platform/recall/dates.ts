@@ -1,4 +1,4 @@
-const TIME_ZONE = "Europe/London";
+export const TIME_ZONE = "Europe/London";
 
 export function dateKey(time: number, timeZone = TIME_ZONE) {
   return new Intl.DateTimeFormat("en-CA", {

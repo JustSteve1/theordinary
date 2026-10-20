@@ -1,0 +1,29 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"],
+  description: "Every local date from a member's first observed day through today."
+}
+
+with zone as (
+  select member_key, coalesce(time_zone, 'Europe/London') as time_zone
+  from ${ref("app_members_latest")}
+),
+firsts as (
+  select member_key, min(date) as first_day
+  from (
+    select member_key, date from ${ref("whoop_daily")}
+    union all
+    select member_key, date from ${ref("bee_daily_activity")}
+    union all
+    select member_key, date from ${ref("recall_daily")}
+  )
+  group by 1
+)
+select
+  f.member_key,
+  day as date,
+  coalesce(z.time_zone, 'Europe/London') as time_zone
+from firsts f
+left join zone z using (member_key)
+cross join unnest(generate_date_array(f.first_day, current_date(coalesce(z.time_zone, 'Europe/London')))) as day

@@ -1,0 +1,58 @@
+# Dev inputs are local parquet. Prod replaces the six source tables with BigQuery queries.
+# Sample outputs always stay on disk. Payloads and speech columns are not in these schemas.
+
+whoop_cycle:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/whoop_cycle.parquet
+
+whoop_recovery:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/whoop_recovery.parquet
+
+whoop_sleep:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/whoop_sleep.parquet
+
+whoop_workout:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/whoop_workout.parquet
+
+bee_activity:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/bee_activity.parquet
+
+bee_daily:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/bee_daily.parquet
+
+neon_status:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/neon_status.parquet
+
+whoop_cycle_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/whoop_cycle.parquet
+
+whoop_recovery_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/whoop_recovery.parquet
+
+whoop_sleep_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/whoop_sleep.parquet
+
+whoop_workout_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/whoop_workout.parquet
+
+bee_activity_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/bee_activity.parquet
+
+bee_daily_sample:
+  type: pandas.ParquetDataset
+  filepath: data/08_reporting/bee_daily.parquet
+
+land_result:
+  type: json.JSONDataset
+  filepath: data/08_reporting/land_user1.json

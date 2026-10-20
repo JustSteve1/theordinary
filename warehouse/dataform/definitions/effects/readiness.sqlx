@@ -1,0 +1,115 @@
+config {
+  type: "view",
+  schema: "ordinary_effects",
+  tags: ["effects"],
+  description: "One row per readiness check. TimesFM is a warning, not a failure."
+}
+
+with whoop as (
+  select *
+  from ${ref("whoop_daily")}
+  where date >= date_sub(current_date('Europe/London'), interval 30 day)
+),
+bee as (
+  select *
+  from ${ref("bee_daily_activity")}
+  where date >= date_sub(current_date('Europe/London'), interval 30 day)
+),
+scores as (
+  select *
+  from ${ref("app_score_runs")}
+),
+baseline as (
+  select min(date) as first_day
+  from ${ref("features_daily")}
+  where feature_id = 'whoop.hrv_rmssd_ms.baseline_28d'
+    and value is not null
+),
+coverage as (
+  select
+    count(distinct feature_id) as features,
+    count(*) as feature_rows
+  from ${ref("features_daily")}
+  where date >= date_sub(current_date('Europe/London'), interval 30 day)
+),
+synthetic as (
+  select
+    countif(
+      experiment_id = 'A'
+      and status = 'ok'
+      and p025 <= 4
+      and p975 >= 4
+      and p025 > 0
+      and abs(beta - 4) < 2.5
+    ) as a_ok,
+    countif(
+      experiment_id = 'B'
+      and status = 'ok'
+      and p025 <= 0
+      and p975 >= 0
+    ) as b_ok
+  from ${ref("effect_estimates")}
+),
+speech as (
+  select count(*) as banned
+  from `the-ordinary-512212.ordinary_raw.INFORMATION_SCHEMA.COLUMNS`
+  where lower(column_name) in (
+    'talk_text', 'narrative', 'transcript', 'summary', 'short_summary', 'detail', 'text',
+    'question', 'answer', 'answers', 'clauses', 'evidence', 'body', 'message', 'content',
+    'notes', 'facts'
+  )
+  or ends_with(lower(column_name), '_text')
+)
+select 'whoop_recovery_days' as check_id,
+  if(countif(recovery_score is not null) > 0, 'pass', 'fail') as status,
+  concat(cast(countif(recovery_score is not null) as string), ' days in the last 30') as detail
+from whoop
+union all
+select 'whoop_sleep_days',
+  if(countif(sleep_asleep_min is not null) > 0, 'pass', 'fail'),
+  concat(cast(countif(sleep_asleep_min is not null) as string), ' days in the last 30')
+from whoop
+union all
+select 'whoop_cycle_days',
+  if(countif(day_strain is not null) > 0, 'pass', 'fail'),
+  concat(cast(countif(day_strain is not null) as string), ' days in the last 30')
+from whoop
+union all
+select 'whoop_newest',
+  if(max_ingested is null, 'fail', if(max_ingested >= timestamp_sub(current_timestamp(), interval 36 hour), 'pass', 'warn')),
+  cast(max_ingested as string)
+from (select max(ingested_at) as max_ingested from ${ref("whoop_recovery")})
+union all
+select 'bee_activity_days',
+  if(count(*) > 0, 'pass', 'fail'),
+  concat(cast(count(*) as string), ' days in the last 30')
+from bee
+union all
+select 'scores_exported',
+  if(count(*) > 0, 'pass', 'fail'),
+  concat(cast(count(*) as string), ' rows, newest ', cast(max(ingested_at) as string))
+from scores
+union all
+select 'feature_coverage',
+  if(features > 0, 'pass', 'fail'),
+  concat(cast(features as string), ' features, ', cast(feature_rows as string), ' rows in the last 30 days')
+from coverage
+union all
+select 'hrv_baseline_28d',
+  if(first_day is null, 'warn', 'pass'),
+  if(first_day is null, 'not non-null yet', cast(first_day as string))
+from baseline
+union all
+select 'synthetic_effects',
+  if(a_ok > 0 and b_ok > 0, 'pass', 'fail'),
+  concat('A=', cast(a_ok as string), ' B=', cast(b_ok as string))
+from synthetic
+union all
+select 'timesfm_london',
+  'warn',
+  'TimesFM 3.0 is not confirmed in europe-west2. counterfactual() records unavailable_in_region.'
+union all
+select 'speech_columns',
+  if(banned = 0, 'pass', 'fail'),
+  concat(cast(banned as string), ' banned column names in ordinary_raw')
+from speech

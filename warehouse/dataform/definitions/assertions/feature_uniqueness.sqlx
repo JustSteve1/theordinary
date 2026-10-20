@@ -1,0 +1,6 @@
+config { type: "assertion", schema: "ordinary_features", tags: ["spine"] }
+
+select member_key, date, feature_id, feature_version, count(*) as n
+from ${ref("features_daily")}
+group by 1, 2, 3, 4
+having n > 1

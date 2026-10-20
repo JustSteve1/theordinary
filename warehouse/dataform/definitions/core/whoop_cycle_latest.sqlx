@@ -1,0 +1,19 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"],
+  description: "Latest cycle per record. Tombstones are dropped."
+}
+
+select * except (row_num)
+from (
+  select
+    *,
+    row_number() over (
+      partition by member_key, record_id
+      order by record_updated_at desc nulls last, ingested_at desc
+    ) as row_num
+  from ${ref("whoop_cycle")}
+)
+where row_num = 1
+  and deleted is not true

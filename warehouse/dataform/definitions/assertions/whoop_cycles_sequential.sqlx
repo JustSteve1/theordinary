@@ -1,0 +1,20 @@
+config { type: "assertion", schema: "ordinary_core", tags: ["spine"] }
+
+-- A WHOOP cycle runs from one wake to the next, so two cycles can start on the
+-- same local date after a short day. What must never happen is overlap.
+select
+  member_key,
+  record_id,
+  start_at,
+  previous_end_at
+from (
+  select
+    member_key,
+    record_id,
+    start_at,
+    lag(end_at) over (partition by member_key order by start_at) as previous_end_at
+  from ${ref("whoop_cycle_latest")}
+  where start_at is not null
+)
+where previous_end_at is not null
+  and start_at < previous_end_at

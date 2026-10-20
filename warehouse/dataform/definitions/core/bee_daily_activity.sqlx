@@ -1,0 +1,50 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"],
+  description: "Bee activity per local day. Ordinary echoes are excluded. duration is null when Bee does not send an end time."
+}
+
+with members as (
+  select member_key, coalesce(time_zone, 'Europe/London') as time_zone
+  from ${ref("app_members_latest")}
+),
+latest as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, item_id order by ingested_at desc) as row_num
+    from ${ref("bee_activity")}
+  )
+  where row_num = 1
+    and is_ordinary_echo is not true
+    and start_at is not null
+),
+activity as (
+  select
+    a.member_key,
+    a.item_id,
+    a.kind,
+    a.duration_s,
+    date(a.start_at, coalesce(m.time_zone, 'Europe/London')) as date,
+    extract(hour from datetime(a.start_at, coalesce(m.time_zone, 'Europe/London'))) * 60
+      + extract(minute from datetime(a.start_at, coalesce(m.time_zone, 'Europe/London'))) as minute_of_day
+  from latest a
+  left join members m using (member_key)
+)
+select
+  member_key,
+  date,
+  countif(kind = 'conversation') as conversation_count,
+  if(
+    countif(kind = 'conversation' and duration_s is not null) = 0,
+    null,
+    sum(if(kind = 'conversation', duration_s, null)) / 60
+  ) as conversation_minutes,
+  countif(kind = 'journal') as journal_count,
+  min(minute_of_day) as first_activity_min,
+  array_agg(distinct item_id) as bee_ids
+from activity
+where date is not null
+group by 1, 2

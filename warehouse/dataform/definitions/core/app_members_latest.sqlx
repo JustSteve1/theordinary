@@ -1,0 +1,14 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["spine"]
+}
+
+select * except (row_num)
+from (
+  select
+    *,
+    row_number() over (partition by member_key order by ingested_at desc) as row_num
+  from ${ref("app_members")}
+)
+where row_num = 1

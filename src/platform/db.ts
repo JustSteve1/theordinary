@@ -160,6 +160,55 @@ create table if not exists score_runs (
   payload jsonb not null,
   unique (checkin_id, scorer_version, config_hash)
 );
+
+create table if not exists warehouse_sync_state (
+  stream text not null,
+  scope text not null default 'global',
+  cursor timestamptz,
+  last_success_at timestamptz,
+  last_error text,
+  updated_at timestamptz not null default now(),
+  primary key (stream, scope)
+);
+
+create table if not exists experiments (
+  id text not null,
+  version int not null,
+  status text not null,
+  config jsonb not null,
+  config_hash text not null,
+  activated_at timestamptz,
+  ended_at timestamptz,
+  primary key (id, version)
+);
+
+create table if not exists experiment_enrolments (
+  experiment_id text not null,
+  version int not null,
+  user_id uuid not null references members (id) on delete cascade,
+  enrolled_at timestamptz not null default now(),
+  left_at timestamptz,
+  primary key (experiment_id, version, user_id)
+);
+
+create table if not exists decision_points (
+  id uuid primary key,
+  experiment_id text not null,
+  version int not null,
+  user_id uuid not null references members (id) on delete cascade,
+  decision_date date not null,
+  decided_at timestamptz not null default now(),
+  available boolean not null,
+  unavailable_reason text,
+  arm text,
+  probability double precision,
+  rand_u double precision,
+  delivered_at timestamptz,
+  channel text,
+  response text,
+  responded_at timestamptz,
+  unique (experiment_id, version, user_id, decision_date)
+);
 `;
 
 function databaseUrl() {

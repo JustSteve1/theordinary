@@ -30,6 +30,9 @@ jobs:
       - name: Scoring tests
         run: pnpm test:scoring
 
+      - name: Warehouse tests
+        run: pnpm test:warehouse
+
       - name: Lint
         run: pnpm lint
 

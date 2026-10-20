@@ -1,0 +1,26 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["effects"]
+}
+
+with latest as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by experiment_id, version order by ingested_at desc) as row_num
+    from ${ref("experiments")}
+  )
+  where row_num = 1
+    and outcomes is not null
+)
+select
+  experiment_id,
+  version,
+  json_value(item, '$.role') as role,
+  json_value(item, '$.feature_id') as feature_id,
+  safe_cast(json_value(item, '$.offset_days') as int64) as offset_days,
+  json_value(item, '$.direction') as direction
+from latest
+cross join unnest(json_query_array(outcomes)) as item

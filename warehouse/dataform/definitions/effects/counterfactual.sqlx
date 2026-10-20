@@ -1,0 +1,32 @@
+config {
+  type: "operations",
+  schema: "ordinary_effects",
+  tags: ["effects"],
+  hasOutput: false
+}
+
+create table if not exists `the-ordinary-512212.ordinary_effects.counterfactual_results` (
+  requested_at timestamp,
+  experiment_id string,
+  version int64,
+  feature_id string,
+  status string,
+  detail string
+);
+
+create or replace procedure `the-ordinary-512212.ordinary_effects.counterfactual`(
+  experiment_id STRING,
+  version INT64,
+  feature_id STRING
+)
+begin
+  insert into `the-ordinary-512212.ordinary_effects.counterfactual_results`
+  values (
+    current_timestamp(),
+    experiment_id,
+    version,
+    feature_id,
+    'unavailable_in_region',
+    'TimesFM 3.0 through AI.FORECAST is not confirmed for datasets in europe-west2. No forecast was run, and no other region was used.'
+  );
+end

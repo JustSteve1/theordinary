@@ -1,0 +1,57 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["effects"],
+  description: "Available decision points joined to outcomes. Null outcomes are kept and flagged."
+}
+
+with decisions as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, decision_id order by ingested_at desc) as row_num
+    from ${ref("decision_points")}
+  )
+  where row_num = 1
+    and available is true
+    and arm is not null
+),
+firsts as (
+  select member_key, experiment_id, version, min(decision_date) as first_date
+  from decisions
+  group by 1, 2, 3
+)
+select
+  d.member_key,
+  d.experiment_id,
+  d.version,
+  o.feature_id,
+  o.role,
+  o.direction,
+  d.decision_date,
+  d.arm,
+  if(d.arm = 'treatment', 1, 0) as a,
+  d.probability as p,
+  d.response,
+  f.value as y,
+  pre.value as y_pre,
+  f.value is null as y_missing,
+  concat(
+    d.member_key,
+    ':',
+    cast(div(date_diff(d.decision_date, firsts.first_date, day), 3) as string)
+  ) as block_id
+from decisions d
+join ${ref("outcome_definitions")} o using (experiment_id, version)
+join firsts using (member_key, experiment_id, version)
+left join ${ref("features_daily")} f
+  on f.member_key = d.member_key
+ and f.feature_id = o.feature_id
+ and f.feature_version = '1.0.0'
+ and f.date = date_add(d.decision_date, interval o.offset_days day)
+left join ${ref("features_daily")} pre
+  on pre.member_key = d.member_key
+ and pre.feature_id = o.feature_id
+ and pre.feature_version = '1.0.0'
+ and pre.date = date_sub(d.decision_date, interval 1 day)

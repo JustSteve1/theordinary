@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = ">=3.10"
+name = "ordinary_warehouse"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    "kedro~=1.7.0",
+    "kedro-datasets>=9",
+    "pandas>=2.2",
+    "pyarrow>=16",
+    "pandas-gbq>=0.26",
+    "db-dtypes",
+    "google-cloud-bigquery>=3",
+    "psycopg[binary]>=3.2",
+]
+
+[project.scripts]
+ordinary-warehouse = "ordinary_warehouse.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=7.2",
+]
+
+[tool.setuptools.dynamic.version]
+attr = "ordinary_warehouse.__version__"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.kedro]
+package_name = "ordinary_warehouse"
+project_name = "Ordinary warehouse"
+kedro_init_version = "1.7.0"
+source_dir = "src"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
