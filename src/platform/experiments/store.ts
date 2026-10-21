@@ -4,6 +4,8 @@ import { db, ready } from "@/src/platform/db";
 import { loadWhoop } from "@/src/platform/integrations/whoop";
 import { dateKey } from "@/src/platform/recall/dates";
 import { configHash, validateExperiment, type ExperimentConfig } from "@/src/platform/experiments/config";
+import { hasDecisionAssigner } from "@/src/platform/experiments/protocol/designs";
+import type { MonitoringConfig } from "@/src/platform/experiments/protocol/types";
 import { planDecision } from "@/src/platform/experiments/plan";
 
 export async function decideToday(now = new Date()) {
@@ -15,6 +17,9 @@ export async function decideToday(now = new Date()) {
   `;
   const created: string[] = [];
   for (const experiment of experiments) {
+    if (!hasDecisionAssigner(experiment.config)) {
+      continue;
+    }
     const parsed = validateExperiment(experiment.config);
     if (!parsed.ok) {
       continue;
@@ -136,16 +141,20 @@ export async function respond(decisionId: string, userId: string, response: "don
   `;
 }
 
-export async function saveDraft(config: ExperimentConfig) {
+export async function saveDraft(config: ExperimentConfig | MonitoringConfig) {
   await ready();
+  const schemaVersion = "schema_version" in config ? config.schema_version : 1;
+  const environment = "environment" in config ? config.environment : "production";
   await db()`
-    insert into experiments (id, version, status, config, config_hash)
+    insert into experiments (id, version, status, config, config_hash, schema_version, environment)
     values (
       ${config.id},
       ${config.version},
       ${"draft"},
       ${db().json(config)},
-      ${configHash(config)}
+      ${configHash(config)},
+      ${schemaVersion},
+      ${environment}
     )
     on conflict (id, version) do nothing
   `;

@@ -182,6 +182,9 @@ create table if not exists experiments (
   primary key (id, version)
 );
 
+alter table experiments add column if not exists schema_version int not null default 1;
+alter table experiments add column if not exists environment text not null default 'production';
+
 create table if not exists experiment_enrolments (
   experiment_id text not null,
   version int not null,
@@ -189,6 +192,15 @@ create table if not exists experiment_enrolments (
   enrolled_at timestamptz not null default now(),
   left_at timestamptz,
   primary key (experiment_id, version, user_id)
+);
+
+alter table experiment_enrolments add column if not exists study_start date;
+
+create table if not exists demo_snapshots (
+  id uuid primary key,
+  experiment_id text not null,
+  created_at timestamptz not null default now(),
+  payload jsonb not null
 );
 
 create table if not exists decision_points (

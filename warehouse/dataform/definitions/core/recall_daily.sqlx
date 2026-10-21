@@ -47,6 +47,7 @@ joined as (
     c.recorded_at,
     s.accuracy,
     s.richness,
+    s.recognition_false_alarm as false_alarm,
     s.intrusion,
     (
       select avg(value)
@@ -83,6 +84,7 @@ select
   date,
   accuracy,
   richness,
+  false_alarm,
   intrusion,
   dimension_mean,
   lag_days,

@@ -10,6 +10,7 @@ const raw = [
   "app_recall_sessions",
   "bee_activity",
   "bee_daily",
+  "partner_measures",
 ];
 
 raw.forEach((name) => {

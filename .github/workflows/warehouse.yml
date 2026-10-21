@@ -32,5 +32,6 @@ jobs:
         run: npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags spine --vars=gitSha=${{ github.sha }}
       - name: Prove the estimator, then build effects
         run: |
+          npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags studies --vars=gitSha=${{ github.sha }}
           npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags effects_test --vars=gitSha=${{ github.sha }}
           npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags effects --vars=gitSha=${{ github.sha }}

@@ -1,0 +1,75 @@
+import type { DemoSnapshot } from "@/src/features/demo/snapshot";
+
+export const demoSnapshotFixture: DemoSnapshot = {
+  experiment: {
+    schema_version: 2,
+    id: "barbara-dry-run",
+    title: "BARBARA monitoring dry run",
+    partner: { id: "barbara_alliance", name: "BARBARA Alliance", role: "measurement" },
+    design: "monitoring_validation",
+    duration_days: 30,
+    schedule: { daily_measures: ["recall.accuracy"], timepoints: [{ id: "baseline", day: 0 }] },
+    partner_measures: [{ id: "reference.digital_battery", type: "number", unit: "score" }],
+  },
+  concept: {
+    id: "spotify-mood-lift",
+    title: "Ten minutes of music, a lift in mood?",
+    partner: { id: "spotify", name: "Spotify", role: "intervention" },
+    design: "micro_randomised_intraday",
+    decision_points: { windows_local: ["11:00", "15:30"] },
+    measures: { mood_check: { items: ["valence_1_7"] } },
+    primary_outcome: { measure: "mood_check.valence" },
+  },
+  series: [
+    { date: "2026-09-21", measure_id: "recall.accuracy", value_number: 68, study_day: 0 },
+    { date: "2026-09-22", measure_id: "recall.accuracy", value_number: null, study_day: 1 },
+    { date: "2026-09-23", measure_id: "recall.accuracy", value_number: 71, study_day: 2 },
+    { date: "2026-09-21", measure_id: "whoop.hrv_rmssd_ms", value_number: 42, study_day: 0 },
+    { date: "2026-09-22", measure_id: "whoop.hrv_rmssd_ms", value_number: 44, study_day: 1 },
+    { date: "2026-09-23", measure_id: "whoop.hrv_rmssd_ms", value_number: 41, study_day: 2 },
+  ],
+  partner_points: [
+    {
+      date: "2026-09-21",
+      measure_id: "reference.digital_battery",
+      timepoint_id: "baseline",
+      value_number: 72,
+      value_category: null,
+      is_synthetic: true,
+    },
+    {
+      date: "2026-10-19",
+      measure_id: "biomarker.ptau217_group",
+      timepoint_id: "baseline",
+      value_number: null,
+      value_category: "negative",
+      is_synthetic: true,
+    },
+  ],
+  coverage: {
+    daily_rows: 150,
+    daily_filled: 110,
+    daily_fill_rate: 0.73,
+    partner_rows: 3,
+    partner_filled: 3,
+    daily_measures: [{ measure_id: "recall.accuracy", days: 30, filled: 18 }],
+  },
+  engine_proof: [
+    { experiment_id: "A", beta: 3.8, p025: 1.2, p975: 6.1, status: "ok", true_effect: 4 },
+    { experiment_id: "B", beta: 0.1, p025: -1.4, p975: 1.6, status: "ok", true_effect: 0 },
+  ],
+  associations: [
+    {
+      feature_id: "whoop.hrv_rmssd_ms.dev",
+      beta: 0.4,
+      p10: -0.2,
+      p90: 1.1,
+      p025: -0.5,
+      p975: 1.4,
+      prob_positive: 0.72,
+      n_with_outcome: 22,
+      not_causal: true,
+    },
+  ],
+  generated_at: "2026-10-21T12:00:00.000Z",
+};

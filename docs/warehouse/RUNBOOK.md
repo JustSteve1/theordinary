@@ -84,6 +84,12 @@ When you are ready:
 
 The card shows the treatment instruction, or "Nothing extra today, carry on as normal." Done and Skipped are stored. Nothing is emailed. Nothing renders when no experiment is active.
 
+## Hackathon MVP
+
+`experiments/barbara-dry-run.json` is a loose v2 monitoring file for one test member. Activate it with `--enrol-me --start` set 30 days back so the study window covers data already in London. `pnpm partner:import` loads synthetic partner rows into `ordinary_raw.partner_measures` (`is_synthetic = true`). Dataform tag `studies` builds `ordinary_core.study_enrolments` and `ordinary_effects.study_frame_long`. `pnpm demo:snapshot` copies a firewall-checked payload into Neon `demo_snapshots`. `/demo` reads that snapshot. It does not query BigQuery. The Spotify file in `experiments/concepts/` is never activated.
+
+Rehearsal order and the stage script: [`HACKATHON-DEMO.md`](HACKATHON-DEMO.md).
+
 ## Reading results
 
 Saved queries are in [`results.sql`](results.sql).

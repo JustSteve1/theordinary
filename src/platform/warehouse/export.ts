@@ -379,6 +379,37 @@ export function experimentWarehouseRow(row: Record<string, unknown>) {
   const config = (row.config ?? {}) as Record<string, unknown>;
   const primary = (config.primary_outcome ?? {}) as Record<string, unknown>;
   const secondary = Array.isArray(config.secondary_outcomes) ? config.secondary_outcomes : [];
+  const partner = (config.partner ?? {}) as Record<string, unknown>;
+  const schedule = (config.schedule ?? {}) as Record<string, unknown>;
+  const daily = Array.isArray(schedule.daily_measures)
+    ? schedule.daily_measures.filter((item): item is string => typeof item === "string")
+    : [];
+  const timepoints = Array.isArray(schedule.timepoints)
+    ? schedule.timepoints
+        .map((item) => {
+          const point = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+          return { id: text(point.id), day: num(point.day) };
+        })
+        .filter((item) => item.id)
+    : [];
+  const partnerMeasures = Array.isArray(config.partner_measures)
+    ? config.partner_measures.map((item) => {
+        const measure = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+        const categories = Array.isArray(measure.categories)
+          ? measure.categories.filter((entry): entry is string => typeof entry === "string")
+          : [];
+        const refs = Array.isArray(measure.timepoints)
+          ? measure.timepoints.filter((entry): entry is string => typeof entry === "string")
+          : [];
+        return {
+          id: text(measure.id),
+          type: text(measure.type),
+          unit: text(measure.unit),
+          categories,
+          timepoints: refs,
+        };
+      })
+    : [];
   const outcome = (role: string, value: Record<string, unknown>) => ({
     role,
     feature_id: text(value.feature_id),
@@ -391,6 +422,13 @@ export function experimentWarehouseRow(row: Record<string, unknown>) {
     status: text(row.status),
     config_hash: text(row.config_hash),
     design: text(config.design),
+    schema_version: num(row.schema_version) ?? (typeof config.schema_version === "number" ? config.schema_version : 1),
+    environment: text(row.environment) ?? (typeof config.environment === "string" ? config.environment : "production"),
+    partner_id: text(partner.id),
+    duration_days: num(config.duration_days),
+    daily_measures: daily,
+    timepoints,
+    partner_measures: partnerMeasures,
     treatment_probability: num(config.treatment_probability),
     primary_feature_id: text(primary.feature_id),
     primary_offset_days: num(primary.offset_days),
@@ -404,7 +442,7 @@ export function experimentWarehouseRow(row: Record<string, unknown>) {
 
 async function exportExperiments() {
   const rows = await db()`
-    select id, version, status, config, config_hash, activated_at, ended_at
+    select id, version, status, config, config_hash, activated_at, ended_at, schema_version, environment
     from experiments
   `;
   const payload = rows.map((row) => experimentWarehouseRow(row as Record<string, unknown>));
@@ -414,7 +452,7 @@ async function exportExperiments() {
 
 async function exportEnrolments(userId: string, member: string) {
   const rows = await db()`
-    select experiment_id, version, enrolled_at, left_at
+    select experiment_id, version, enrolled_at, left_at, study_start
     from experiment_enrolments
     where user_id = ${userId}
   `;
@@ -424,6 +462,7 @@ async function exportEnrolments(userId: string, member: string) {
     member_key: member,
     enrolled_at: iso(row.enrolled_at),
     left_at: iso(row.left_at),
+    study_start: dateOnly(row.study_start),
     ingested_at: new Date().toISOString(),
   }));
   await loadRows("ordinary_experiments", "experiment_enrolments", payload);

@@ -30,6 +30,7 @@ select
   b.first_activity_min,
   r.accuracy,
   r.richness,
+  r.false_alarm,
   r.intrusion,
   r.dimension_mean,
   r.lag_days,

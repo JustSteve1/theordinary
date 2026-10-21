@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "id": "barbara-dry-run",
+  "version": 1,
+  "status": "draft",
+  "environment": "test",
+  "title": "BARBARA monitoring dry run",
+  "partner": {
+    "id": "barbara_alliance",
+    "name": "BARBARA Alliance",
+    "role": "measurement",
+    "receives": ["aggregate_reports"],
+    "never_receives": ["health_data", "member_identity", "speech"]
+  },
+  "design": "monitoring_validation",
+  "duration_days": 30,
+  "schedule": {
+    "daily_measures": ["recall.accuracy", "recall.richness", "recall.false_alarm", "whoop.sleep_asleep_min", "whoop.hrv_rmssd_ms"],
+    "timepoints": [
+      { "id": "baseline", "day": 0 },
+      { "id": "end", "day": 28 }
+    ]
+  },
+  "partner_measures": [
+    { "id": "reference.digital_battery", "type": "number", "unit": "score", "range": [0, 100], "timepoints": ["baseline", "end"] },
+    { "id": "biomarker.ptau217_group", "type": "category", "categories": ["positive", "negative", "indeterminate"], "timepoints": ["baseline"] }
+  ]
+}

@@ -13,7 +13,19 @@ export async function RecallLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const path = (await headers()).get("x-recall-path") ?? "";
   const profile = await currentProfile();
+  if (path === "/demo") {
+    return (
+      <RecallFrame
+        homeHref={profile?.step === "done" ? "/home" : "/"}
+        wide
+        account={profile ? <AccountMenu name={profile.name} /> : undefined}
+      >
+        {children}
+      </RecallFrame>
+    );
+  }
   if (!profile) {
     redirect("/login");
   }
@@ -21,7 +33,6 @@ export async function RecallLayout({
     redirect("/signup/verify");
   }
 
-  const path = (await headers()).get("x-recall-path") ?? "";
   const listening = path.startsWith("/checkin/live");
   const capture = dayCaptureLive(profile);
 

@@ -1,0 +1,7 @@
+config { type: "assertion", schema: "ordinary_effects", tags: ["studies"] }
+
+select p.member_key, p.experiment_id, p.version, p.measure_id, p.timepoint_id
+from ${ref("partner_measures")} p
+left join ${ref("study_enrolments")} e
+  using (member_key, experiment_id, version)
+where e.member_key is null
