@@ -155,6 +155,13 @@ export async function middleware(request: NextRequest) {
     return continueWithPath(request);
   }
 
+  if (pathname === "/demo") {
+    if (!canAccessApp) {
+      return NextResponse.rewrite(new URL("/", request.url));
+    }
+    return continueWithPath(request);
+  }
+
   if (canAccessApp) {
     return continueWithPath(request);
   }

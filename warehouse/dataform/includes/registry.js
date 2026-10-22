@@ -22,6 +22,7 @@ const BASE = [
   column("bee.first_activity_min", "first_activity_min", "First activity", "minutes from local midnight", "bee", "Local date of the earliest non-echo activity.", "Minutes from local midnight.", null, 0),
   column("recall.accuracy", "accuracy", "Accuracy", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "accuracy from the score run.", true, 0),
   column("recall.richness", "richness", "Richness", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "richness from the score run.", true, 0),
+  column("recall.false_alarm", "false_alarm", "False alarms", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "recognition_false_alarm from the score run.", false, 0),
   column("recall.intrusion", "intrusion", "Intrusion", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "intrusion from the score run.", false, 0),
   column("recall.dimension_mean", "dimension_mean", "Dimension mean", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "Mean of the four dimension levels.", true, 0),
   column("recall.lag_days", "lag_days", "Recall lag", "days", "recall", "Check-in target_date.", "conditions.lagDays.", null, 0),

@@ -25,14 +25,21 @@ CONFIRM_BUDGET=25 bash warehouse/bootstrap.sh
 
 The script skips resources that already exist. Output values go to `warehouse/bootstrap.out.env`, which is gitignored.
 
+`bash warehouse/bootstrap.sh --with-forecast` also runs [`forecast/setup.sh`](forecast/setup.sh): the `ordinary-forecaster` service account, its dataset access, and the `ordinary-forecast` Cloud Run job in `europe-west2`. That script can be run on its own once the datasets exist.
+
 Secrets (`MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`) are generated locally with `openssl rand -hex 32` and added to Vercel Production. They are not written by this script.
 
 ## Local catalog
 
 [`kedro`](kedro) names dev and prod data for a recorded local run. `kedro run` stays on local parquet. `kedro run --env=prod --pipelines=land_user1` is the command that writes `ordinary_raw`, by calling the TypeScript export. See the runbook.
 
+## Forecast job
+
+[`forecast`](forecast) holds the Chronos-2 baseline band: a plain-Python Cloud Run job, its Dockerfile, pandas-only tests, and the London setup. See [`forecast/README.md`](forecast/README.md).
+
 ## Undo
 
+- Forecast job: see [`forecast/README.md`](forecast/README.md#remove).
 - Datasets: `bq rm -r -f -d the-ordinary-512212:ordinary_raw` (repeat per dataset). This deletes analysis data.
 - Service accounts: `gcloud iam service-accounts delete ordinary-vercel-writer@the-ordinary-512212.iam.gserviceaccount.com`
 - Pools: `gcloud iam workload-identity-pools delete vercel --location=global`

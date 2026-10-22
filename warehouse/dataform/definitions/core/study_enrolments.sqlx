@@ -1,0 +1,45 @@
+config {
+  type: "table",
+  schema: "ordinary_core",
+  tags: ["studies"],
+  description: "Latest enrolment per member and experiment version, with the backdated study window."
+}
+
+with experiments as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by experiment_id, version order by ingested_at desc) as row_num
+    from ${ref("experiments")}
+  )
+  where row_num = 1
+),
+enrolments as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (partition by member_key, experiment_id, version order by ingested_at desc) as row_num
+    from ${ref("experiment_enrolments")}
+  )
+  where row_num = 1
+)
+select
+  e.member_key,
+  e.experiment_id,
+  e.version,
+  e.study_start,
+  least(
+    date_add(e.study_start, interval x.duration_days - 1 day),
+    current_date('Europe/London')
+  ) as study_end,
+  x.duration_days,
+  x.environment,
+  x.daily_measures,
+  x.timepoints,
+  x.partner_measures
+from enrolments e
+join experiments x using (experiment_id, version)
+where e.study_start is not null
+  and x.duration_days is not null

@@ -1,4 +1,4 @@
-import type { TableField, TableMetadata } from "@google-cloud/bigquery";
+import type { Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 
 import { warehouse, warehouseEnabled } from "@/src/platform/warehouse/client";
 
@@ -162,6 +162,13 @@ export const TABLE_SCHEMAS: Record<string, { dataset: string; columns: Column[] 
       { name: "status", type: "STRING" },
       { name: "config_hash", type: "STRING" },
       { name: "design", type: "STRING" },
+      { name: "schema_version", type: "INT64" },
+      { name: "environment", type: "STRING" },
+      { name: "partner_id", type: "STRING" },
+      { name: "duration_days", type: "INT64" },
+      { name: "daily_measures", type: "JSON" },
+      { name: "timepoints", type: "JSON" },
+      { name: "partner_measures", type: "JSON" },
       { name: "treatment_probability", type: "FLOAT64" },
       { name: "primary_feature_id", type: "STRING" },
       { name: "primary_offset_days", type: "INT64" },
@@ -180,6 +187,23 @@ export const TABLE_SCHEMAS: Record<string, { dataset: string; columns: Column[] 
       { name: "member_key", type: "STRING", mode: "REQUIRED" },
       { name: "enrolled_at", type: "TIMESTAMP" },
       { name: "left_at", type: "TIMESTAMP" },
+      { name: "study_start", type: "DATE" },
+      { name: "ingested_at", type: "TIMESTAMP", mode: "REQUIRED" },
+    ],
+  },
+  partner_measures: {
+    dataset: "ordinary_raw",
+    columns: [
+      { name: "member_key", type: "STRING", mode: "REQUIRED" },
+      { name: "experiment_id", type: "STRING", mode: "REQUIRED" },
+      { name: "version", type: "INT64", mode: "REQUIRED" },
+      { name: "measure_id", type: "STRING", mode: "REQUIRED" },
+      { name: "timepoint_id", type: "STRING", mode: "REQUIRED" },
+      { name: "value_number", type: "FLOAT64" },
+      { name: "value_category", type: "STRING" },
+      { name: "unit", type: "STRING" },
+      { name: "is_synthetic", type: "BOOL" },
+      { name: "import_id", type: "STRING" },
       { name: "ingested_at", type: "TIMESTAMP", mode: "REQUIRED" },
     ],
   },
@@ -223,6 +247,8 @@ export async function ensureTables() {
     const destination = bq.dataset(table.dataset).table(name);
     const [exists] = await destination.exists();
     if (exists) {
+      const added = await ensureColumns(destination, table.columns);
+      created.push(...added.map((column) => `${table.dataset}.${name}.${column}`));
       continue;
     }
     const metadata: TableMetadata = {
@@ -236,4 +262,18 @@ export async function ensureTables() {
     created.push(`${table.dataset}.${name}`);
   }
   return created;
+}
+
+async function ensureColumns(destination: Table, columns: Column[]) {
+  const [meta] = await destination.getMetadata();
+  const have = new Set((meta.schema?.fields ?? []).map((field: TableField) => field.name));
+  const extra = columns.filter((column) => !have.has(column.name));
+  if (!extra.length) {
+    return [];
+  }
+  meta.schema = {
+    fields: [...(meta.schema?.fields ?? []), ...(extra as TableField[])],
+  };
+  await destination.setMetadata(meta);
+  return extra.map((column) => column.name);
 }

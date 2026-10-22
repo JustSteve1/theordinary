@@ -24,10 +24,11 @@ No passkeys. No ORM. Queries are tagged-template SQL.
 
 ```
 app/                         Next routes and API handlers
-src/features/                Account, check-in, chat, onboarding, integrations, settings
+src/features/                Account, check-in, chat, onboarding, integrations, settings, demo
 src/journey/                 Route-level screens composed from features
 src/platform/                Session, members, db, scoring, integrations, warehouse, experiments
 skills/episodic-recall/      Scoring config, methodology companion, Python session contract
+warehouse/                   Bootstrap, Dataform, Kedro catalog, Chronos-2 forecast job
 docs/recall/                 Screen pack and journey map
 ```
 
@@ -110,6 +111,7 @@ New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL
 | WHOOP webhook | `/api/whoop/webhook` |
 | Nightly warehouse | `/api/cron/whoop-sync`, `/api/cron/warehouse-export`, `/api/cron/experiments-decide` |
 | Morning nudges | `/api/cron/nudges-morning` |
+| Hackathon demo | `/demo` |
 
 ## Data the scoring path cares about
 
@@ -145,11 +147,22 @@ pnpm test:nudges
 pnpm warehouse:status
 pnpm experiments:activate first-experiment
 pnpm experiments:end first-experiment
+pnpm partner:sample-file barbara-dry-run
+pnpm partner:import barbara-dry-run tmp/partner-barbara-dry-run.csv
+pnpm forecast:run
+pnpm demo:snapshot barbara-dry-run
+pytest warehouse/forecast
 ```
 
 `pnpm test:scoring` runs the v2 scoring cases (including Tests A/B/C) and the Bee export firewall (payload is talk text only; Ordinary-tagged echoes are dropped; a successful export is not posted twice).
 
-`pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser, and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail. It does not pretend the warehouse is connected when the env vars are missing.
+`pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser, the v2 monitoring protocol, partner-import validation, the demo access rule, the demo baseline band (inside/compared counts, each segment's rendering, older snapshots without bands), and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail. It does not pretend the warehouse is connected when the env vars are missing.
+
+## Hackathon MVP
+
+A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The Spotify file under `experiments/concepts/` is display-only and is never activated.
+
+**Baseline band.** [`warehouse/forecast`](warehouse/forecast) is a Cloud Run job in London that asks Chronos-2 to forecast the last 7 days of each daily measure from every day before, and writes `ordinary_effects.forecasts` with a load job. `pnpm forecast:run` starts it by hand; `pnpm demo:snapshot` attaches the bands; `/demo` draws them in grey under the actual line as "Baseline expectation, no experiment yet". Fourteen or more days of history is a full band, 5 to 13 is a lighter early estimate, fewer shows a message. The pandas logic is tested with `pytest warehouse/forecast` in CI without torch. The model is pinned by commit and baked into the image, so the job makes no network calls except to BigQuery.
 
 `pnpm test:nudges` checks the rule validator, the randomised send or hold, the London-day caps, and that an exported nudge row has no message text.
 

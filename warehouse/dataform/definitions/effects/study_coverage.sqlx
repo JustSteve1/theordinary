@@ -1,0 +1,47 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "Share of study days with each daily measure, plus partner measures received."
+}
+
+with frame as (
+  select * from ${ref("study_frame_long")}
+),
+daily as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    measure_id,
+    count(*) as days,
+    countif(value_number is not null) as filled
+  from frame
+  where source = 'ordinary'
+  group by 1, 2, 3, 4
+),
+totals as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    countif(source = 'ordinary') as daily_rows,
+    countif(source = 'ordinary' and value_number is not null) as daily_filled,
+    safe_divide(
+      countif(source = 'ordinary' and value_number is not null),
+      countif(source = 'ordinary')
+    ) as daily_fill_rate,
+    countif(source = 'partner') as partner_rows,
+    countif(
+      source = 'partner'
+      and (value_number is not null or value_category is not null)
+    ) as partner_filled
+  from frame
+  group by 1, 2, 3
+)
+select
+  t.*,
+  array_agg(struct(d.measure_id, d.days, d.filled) ignore nulls) as daily_measures
+from totals t
+left join daily d using (member_key, experiment_id, version)
+group by t.member_key, t.experiment_id, t.version, t.daily_rows, t.daily_filled, t.daily_fill_rate, t.partner_rows, t.partner_filled

@@ -1,0 +1,106 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "One row per member, experiment, date and measure for the study window."
+}
+
+with enrol as (
+  select * from ${ref("study_enrolments")}
+),
+days as (
+  select
+    e.*,
+    day as date,
+    date_diff(day, e.study_start, day) as study_day
+  from enrol e
+  cross join unnest(generate_date_array(e.study_start, e.study_end)) as day
+),
+measures as (
+  select
+    d.*,
+    measure_id
+  from days d
+  cross join unnest(json_value_array(d.daily_measures)) as measure_id
+),
+features as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (
+        partition by member_key, date, feature_id
+        order by feature_version desc, computed_at desc
+      ) as row_num
+    from ${ref("features_daily")}
+  )
+  where row_num = 1
+),
+daily as (
+  select
+    m.member_key,
+    m.experiment_id,
+    m.version,
+    m.study_day,
+    m.date,
+    m.measure_id,
+    'ordinary' as source,
+    cast(null as string) as timepoint_id,
+    f.value as value_number,
+    cast(null as string) as value_category,
+    false as is_synthetic,
+    m.environment
+  from measures m
+  left join features f
+    on f.member_key = m.member_key
+    and f.date = m.date
+    and f.feature_id = m.measure_id
+),
+partner_src as (
+  select * except (row_num)
+  from (
+    select
+      *,
+      row_number() over (
+        partition by member_key, experiment_id, version, measure_id, timepoint_id
+        order by ingested_at desc
+      ) as row_num
+    from ${ref("partner_measures")}
+  )
+  where row_num = 1
+),
+timepoint_days as (
+  select
+    e.member_key,
+    e.experiment_id,
+    e.version,
+    e.study_start,
+    e.study_end,
+    e.environment,
+    json_value(tp, '$.id') as timepoint_id,
+    cast(json_value(tp, '$.day') as int64) as day
+  from enrol e
+  cross join unnest(json_query_array(e.timepoints)) as tp
+),
+partner as (
+  select
+    p.member_key,
+    p.experiment_id,
+    p.version,
+    t.day as study_day,
+    date_add(t.study_start, interval t.day day) as date,
+    p.measure_id,
+    'partner' as source,
+    p.timepoint_id,
+    p.value_number,
+    p.value_category,
+    p.is_synthetic,
+    t.environment
+  from partner_src p
+  join timepoint_days t
+    using (member_key, experiment_id, version, timepoint_id)
+  where date_add(t.study_start, interval t.day day) between t.study_start and t.study_end
+)
+select * from daily
+union all
+select * from partner

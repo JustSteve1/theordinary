@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "id": "spotify-mood-lift",
+  "version": 1,
+  "status": "concept",
+  "title": "Ten minutes of music, a lift in mood?",
+  "partner": {
+    "id": "spotify",
+    "name": "Spotify",
+    "role": "intervention",
+    "receives": ["effect_estimates", "engagement_rates"],
+    "never_receives": ["health_data", "member_identity", "listening_history"]
+  },
+  "design": "micro_randomised_intraday",
+  "duration_days": 21,
+  "decision_points": { "windows_local": ["11:00", "15:30"] },
+  "arms": [
+    { "name": "control", "probability": 0.4, "actions": [] },
+    { "name": "quiet_break", "probability": 0.2, "actions": [{ "type": "instruction", "text": "Take 10 minutes away from your screen." }] },
+    { "name": "music", "probability": 0.4, "actions": [{ "type": "partner_content", "partner": "spotify", "content_ref": "playlist:TBC", "duration_min": 10 }] }
+  ],
+  "measures": {
+    "mood_check": { "items": ["valence_1_7", "energy_1_7"], "at": ["decision", "+60m"], "all_arms": true },
+    "adherence": { "source": "spotify_recently_played", "within_min": 60 }
+  },
+  "primary_outcome": { "measure": "mood_check.valence", "at": "+60m", "contrast": "music_vs_control", "direction": "increase" },
+  "secondary_outcomes": [
+    { "feature_id": "recall.richness", "offset_days": 0, "direction": "increase" },
+    { "feature_id": "whoop.hrv_rmssd_ms.dev", "offset_days": 1, "direction": "increase" }
+  ]
+}

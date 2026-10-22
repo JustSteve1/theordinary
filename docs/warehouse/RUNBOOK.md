@@ -91,6 +91,14 @@ When you are ready:
 
 The card shows the treatment instruction, or "Nothing extra today, carry on as normal." Done and Skipped are stored. Nothing is emailed. Nothing renders when no experiment is active.
 
+## Hackathon MVP
+
+`experiments/barbara-dry-run.json` is a loose v2 monitoring file for one test member. Activate it with `--enrol-me --start` set 30 days back so the study window covers data already in London. `pnpm partner:import` loads synthetic partner rows into `ordinary_raw.partner_measures` (`is_synthetic = true`). Dataform tag `studies` builds `ordinary_core.study_enrolments` and `ordinary_effects.study_frame_long`. `pnpm demo:snapshot` copies a firewall-checked payload into Neon `demo_snapshots`. `/demo` reads that snapshot. It does not query BigQuery. The Spotify file in `experiments/concepts/` is never activated.
+
+The baseline band comes from the `ordinary-forecast` Cloud Run job in `europe-west2`, running as `ordinary-forecaster` (reader on `ordinary_core` and `ordinary_features`, writer on `ordinary_effects`, no keys). It reads `study_enrolments`, `study_frame_long` and `features_daily`, forecasts the last 7 days with Chronos-2 from the days before, and writes `ordinary_effects.forecasts` with a `WRITE_TRUNCATE` load job. Dataform treats `forecasts` as a source; `dataform run --tags forecast` runs the `forecast_no_leakage` assertion. Deploy once with `warehouse/forecast/setup.sh` (or `bootstrap.sh --with-forecast`), run with `pnpm forecast:run`. Details in [`warehouse/forecast/README.md`](../../warehouse/forecast/README.md).
+
+Rehearsal order and the stage script: [`HACKATHON-DEMO.md`](HACKATHON-DEMO.md).
+
 ## Reading results
 
 Saved queries are in [`results.sql`](results.sql).
@@ -115,4 +123,4 @@ Email nudges, rewards, pooling across members beyond within-member centring, and
 
 ## Bootstrap still needs a person
 
-`warehouse/bootstrap.sh` needs `gcloud auth login`, `gcloud auth application-default login`, and billing on `the-ordinary-512212`. The live Vercel team is `440hz` and the project is `theordinary` (`https://vercel.com/440hz/theordinary`, domain `theordinary.club`). OIDC issuer mode on that team is Team (`https://oidc.vercel.com/440hz`). Dataset roles are written on the dataset access list, because dataset IAM policy bindings are not allowlisted on this project. The script never creates a service-account key. The £25 budget is created only with `CONFIRM_BUDGET=25`.
+`warehouse/bootstrap.sh` needs `gcloud auth login`, `gcloud auth application-default login`, and billing on `the-ordinary-512212`. `--with-forecast` also enables Cloud Run, Cloud Build and Artifact Registry and deploys the forecast job from source; if that deploy asks for a Cloud Build or Artifact Registry role, grant it by hand and re-run. The live Vercel team is `440hz` and the project is `theordinary` (`https://vercel.com/440hz/theordinary`, domain `theordinary.club`). OIDC issuer mode on that team is Team (`https://oidc.vercel.com/440hz`). Dataset roles are written on the dataset access list, because dataset IAM policy bindings are not allowlisted on this project. The script never creates a service-account key. The £25 budget is created only with `CONFIRM_BUDGET=25`.

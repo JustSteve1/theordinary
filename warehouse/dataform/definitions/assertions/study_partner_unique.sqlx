@@ -1,0 +1,7 @@
+config { type: "assertion", schema: "ordinary_effects", tags: ["studies"] }
+
+select member_key, experiment_id, version, measure_id, timepoint_id, count(*) as n
+from ${ref("study_frame_long")}
+where source = 'partner'
+group by 1, 2, 3, 4, 5
+having count(*) > 1

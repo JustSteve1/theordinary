@@ -8,6 +8,14 @@ LOCATION="europe-west2"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 OUT="$ROOT/bootstrap.out.env"
 
+WITH_FORECAST=0
+for arg in "$@"; do
+  case "$arg" in
+    --with-forecast) WITH_FORECAST=1 ;;
+    *) printf 'bootstrap: unknown option %s\n' "$arg" >&2; exit 1 ;;
+  esac
+done
+
 DATASETS=(
   ordinary_raw
   ordinary_core
@@ -234,3 +242,10 @@ say "Vercel production env: GCP_PROJECT_ID GCP_PROJECT_NUMBER GCP_SERVICE_ACCOUN
 say "GitHub Actions variables: GCP_WIF_PROVIDER GCP_DATAFORM_SA"
 say "Generate secrets locally (do not commit): openssl rand -hex 32"
 say "If the Vercel CLI is signed in: vercel env add MEMBER_KEY_SECRET production"
+
+if [[ "$WITH_FORECAST" == "1" ]]; then
+  say "Setting up the Chronos-2 forecast job (--with-forecast)"
+  # Sourced so it reuses say, die, ensure_sa and grant_dataset from above.
+  # shellcheck source=forecast/setup.sh
+  source "$ROOT/forecast/setup.sh"
+fi

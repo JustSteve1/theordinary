@@ -81,6 +81,6 @@ function validOutcome(value: unknown): value is Outcome {
   );
 }
 
-export function configHash(config: ExperimentConfig) {
+export function configHash(config: object) {
   return createHash("sha256").update(JSON.stringify(config)).digest("hex");
 }

@@ -16,6 +16,9 @@ const BANNED = new Set([
   "content",
   "notes",
   "facts",
+  "instruction",
+  "hypothesis",
+  "study_id",
 ]);
 
 export class SpeechFirewallError extends Error {

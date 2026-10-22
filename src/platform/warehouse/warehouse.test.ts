@@ -37,6 +37,9 @@ test("firewall rejects banned keys, nested keys, and long strings", () => {
     "notes",
     "facts",
     "spoken_text",
+    "instruction",
+    "hypothesis",
+    "study_id",
   ];
   for (const key of banned) {
     assert.throws(() => assertNoSpeech("app_checkins", [{ [key]: "x" }]), SpeechFirewallError);
@@ -122,6 +125,39 @@ test("bee daily summaries are dated by their millisecond stamp in London time", 
 test("a withdrawn member is skipped", () => {
   assert.equal(shouldExportMember("consent withdrawn"), false);
   assert.equal(shouldExportMember(null), true);
+});
+
+test("v2 experiment export keeps schedule metadata and no banned keys", () => {
+  const row = experimentWarehouseRow({
+    id: "barbara-dry-run",
+    version: 1,
+    status: "active",
+    config_hash: "abc",
+    schema_version: 2,
+    environment: "test",
+    config: {
+      schema_version: 2,
+      design: "monitoring_validation",
+      hypothesis: "must not leave",
+      notes: "private note",
+      partner: { id: "barbara_alliance" },
+      duration_days: 30,
+      schedule: {
+        daily_measures: ["recall.accuracy"],
+        timepoints: [{ id: "baseline", day: 0 }],
+      },
+      partner_measures: [
+        { id: "reference.digital_battery", type: "number", unit: "score", timepoints: ["baseline"] },
+      ],
+    },
+  });
+  const encoded = JSON.stringify(row);
+  assert.equal(encoded.includes("must not leave"), false);
+  assert.equal(encoded.includes("private note"), false);
+  assert.equal(encoded.includes("hypothesis"), false);
+  assert.equal(row.partner_id, "barbara_alliance");
+  assert.deepEqual(row.daily_measures, ["recall.accuracy"]);
+  assert.doesNotThrow(() => assertNoSpeech("experiments", [row]));
 });
 
 test("experiment export strips instruction text", () => {

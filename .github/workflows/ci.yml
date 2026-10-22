@@ -7,6 +7,22 @@ on:
     branches: [main]
 
 jobs:
+  forecast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pandas and pytest only
+        run: pip install pandas==2.3.3 pytest
+
+      - name: Forecast band tests
+        run: pytest warehouse/forecast
+
   ci:
     runs-on: ubuntu-latest
 

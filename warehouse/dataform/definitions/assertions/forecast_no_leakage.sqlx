@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  schema: "ordinary_effects",
+  tags: ["forecast"],
+  description: "Every forecast context ends before its window, and every target date lies inside the window."
+}
+
+select run_id, member_key, feature_id, context_end, window_start, window_end, target_date
+from ${ref("forecasts")}
+where context_end >= window_start
+   or (target_date is not null and (target_date < window_start or target_date > window_end))

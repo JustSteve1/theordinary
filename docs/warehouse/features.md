@@ -32,6 +32,7 @@ Sleep and recovery are dated to the local morning the sleep ended. A WHOOP physi
 | `bee.first_activity_min` | minutes from local midnight | Local date of the earliest non-echo activity. | Minutes from local midnight. |  | 0 |
 | `recall.accuracy` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | accuracy from the score run. | yes | 0 |
 | `recall.richness` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | richness from the score run. | yes | 0 |
+| `recall.false_alarm` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | recognition_false_alarm from the score run. | no | 0 |
 | `recall.intrusion` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | intrusion from the score run. | no | 0 |
 | `recall.dimension_mean` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | Mean of the four dimension levels. | yes | 0 |
 | `recall.lag_days` | days | Check-in target_date. | conditions.lagDays. |  | 0 |
