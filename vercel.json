@@ -5,6 +5,7 @@
   "crons": [
     { "path": "/api/cron/whoop-sync", "schedule": "45 6 * * *" },
     { "path": "/api/cron/experiments-decide", "schedule": "15 7 * * *" },
+    { "path": "/api/cron/nudges-morning", "schedule": "30 7 * * *" },
     { "path": "/api/cron/warehouse-export", "schedule": "15 8 * * *" }
   ]
 }

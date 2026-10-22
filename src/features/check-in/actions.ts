@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 
+import { emitNudgeEvent } from "@/src/platform/nudges";
 import { loadBee } from "@/src/platform/integrations/bee";
 import {
   buildBeeExportPayload,
@@ -187,6 +188,9 @@ export async function finishTalk(payload: TalkPayload): Promise<FinishResult> {
       matcherTier: v2.matcherTier,
       payload: v2,
     });
+    await emitNudgeEvent({ type: "checkin_saved", userId: profile.id, eventId: session.id }).catch(
+      (error) => console.error("nudge", error instanceof Error ? error.message : error),
+    );
     try {
       await pushCheckinToBee(
         profile.id,

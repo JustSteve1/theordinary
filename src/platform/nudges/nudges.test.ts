@@ -3,6 +3,15 @@ import test from "node:test";
 
 import { readFileSync } from "node:fs";
 
+import { dateKey } from "@/src/platform/recall/dates";
+import { evaluate } from "@/src/platform/nudges/engine";
+import {
+  activeNudges,
+  emitNudgeEvent,
+  nudgeHistory,
+  runScheduledNudges,
+} from "@/src/platform/nudges";
+import { drawRandU } from "@/src/platform/nudges/randomise";
 import {
   evaluateCondition,
   loadCopy,
@@ -10,8 +19,13 @@ import {
   validateRule,
   type Condition,
   type CopyBook,
+  type NudgeRule,
 } from "@/src/platform/nudges/rules";
+import { checkinStreakDays, richnessMetrics } from "@/src/platform/nudges/signals/checkins";
+import { experimentMetrics } from "@/src/platform/nudges/signals/experiments";
+import { recoveryMetric } from "@/src/platform/nudges/signals/whoop";
 import { memoryStore, numericParams, type MemoryStore } from "@/src/platform/nudges/store";
+import { londonIsoWeek, londonMidnight } from "@/src/platform/nudges/time";
 import type { NudgeDraft } from "@/src/platform/nudges/types";
 
 const copy: CopyBook = loadCopy();
@@ -228,4 +242,221 @@ test("shown is recorded once, dismiss keeps the member, and expiry drops pending
   assert.equal(await store.expireOld("member-a", first), 1);
   assert.equal(pending.status, "expired");
   assert.equal((await store.listActive("member-a", first, 10)).length, 0);
+});
+
+const salt = "nudge-salt-0123456789abcdef-extra";
+
+function rule(patch: Partial<NudgeRule> = {}): NudgeRule {
+  return {
+    id: "sample",
+    version: 1,
+    kind: "reinforcement",
+    category: "consistency",
+    trigger: "checkin_saved",
+    conditions: { all: [{ metric: "checkin_streak_days", op: "gte", value: 1 }] },
+    message: { key: "streak", params: ["checkin_streak_days"] },
+    send_probability: 1,
+    cooldown_hours: 20,
+    priority: 2,
+    expires_after_hours: 36,
+    ...patch,
+  };
+}
+
+test("signals read fixtures, including a streak across London midnight", () => {
+  const evening = dateKey(Date.parse("2026-10-22T22:30:00Z"));
+  const afterMidnight = dateKey(Date.parse("2026-10-22T23:30:00Z"));
+  assert.equal(evening, "2026-10-22");
+  assert.equal(afterMidnight, "2026-10-23");
+  assert.equal(checkinStreakDays([evening, afterMidnight], afterMidnight), 2);
+  assert.equal(checkinStreakDays([evening], afterMidnight), 0);
+
+  const richness = richnessMetrics([
+    { richness: 80, practice: false },
+    { richness: 10, practice: true },
+    { richness: 70, practice: false },
+    { richness: 60, practice: false },
+    { richness: 50, practice: false },
+    { richness: 65, practice: false },
+    { richness: 55, practice: false },
+    { richness: null, practice: false },
+  ]);
+  assert.equal(richness.recent_scored_checkins, 5);
+  assert.equal(richness.richness_vs_recent, 20);
+  assert.deepEqual(experimentMetrics(2), { experiment_done_this_week: 2 });
+
+  const now = Date.parse("2026-10-22T07:00:00Z");
+  assert.deepEqual(recoveryMetric({ status: "ok", value: 72, atMs: now - 60 * 60 * 1000, now }), {
+    whoop_recovery_today: 72,
+  });
+  assert.deepEqual(recoveryMetric({ status: "disconnected", value: 72, atMs: now, now }), {});
+  assert.deepEqual(
+    recoveryMetric({ status: "ok", value: 72, atMs: now - 19 * 60 * 60 * 1000, now }),
+    {},
+  );
+  assert.deepEqual(recoveryMetric({ status: "ok", value: null, atMs: now, now }), {});
+
+  const week = londonIsoWeek(new Date("2026-10-22T12:00:00Z"));
+  assert.equal(dateKey(week.start.getTime()), "2026-10-19");
+  assert.equal(dateKey(week.end.getTime()), "2026-10-26");
+  assert.equal(londonMidnight("2026-10-22").toISOString(), "2026-10-21T23:00:00.000Z");
+  assert.equal(londonMidnight("2026-11-01").toISOString(), "2026-11-01T00:00:00.000Z");
+});
+
+test("the randomiser is deterministic and sends about four fifths", () => {
+  const input = { ruleId: "sample", version: 1, userId: "member-a", triggerKey: "a", salt };
+  const once = drawRandU(input);
+  assert.equal(once, drawRandU(input));
+  assert.ok(once >= 0 && once < 1);
+  let sent = 0;
+  for (let i = 0; i < 10_000; i += 1) {
+    if (drawRandU({ ...input, triggerKey: String(i) }) < 0.8) {
+      sent += 1;
+    }
+  }
+  const share = sent / 10_000;
+  assert.ok(share > 0.75 && share < 0.85, String(share));
+});
+
+test("caps, cooldown, idempotency, holds, and a closed gate write the right rows", async () => {
+  const now = new Date("2026-10-22T08:00:00.000Z");
+  const metrics = async () => ({ checkin_streak_days: 3 });
+  const capped = memoryStore();
+  await capped.insert(draft({ ruleId: "already-a", triggerKey: "a", category: "memory", createdAt: now }));
+  await capped.insert(draft({ ruleId: "already-b", triggerKey: "b", category: "recovery", createdAt: now }));
+  assert.equal(
+    await evaluate(
+      { type: "checkin_saved", userId: "member-a", triggerKey: "fresh", now },
+      { store: capped, flag: true, salt, rules: [rule({ id: "third" })], metrics },
+    ),
+    0,
+  );
+
+  const category = memoryStore();
+  await category.insert(draft({ createdAt: now }));
+  assert.equal(
+    await evaluate(
+      { type: "checkin_saved", userId: "member-a", triggerKey: "fresh", now },
+      {
+        store: category,
+        flag: true,
+        salt,
+        rules: [
+          rule({ id: "same-category" }),
+          rule({
+            id: "other",
+            category: "memory",
+            priority: 3,
+            message: { key: "richness_up", params: [] },
+          }),
+        ],
+        metrics,
+      },
+    ),
+    1,
+  );
+  assert.deepEqual(
+    category.rows.map((row) => row.ruleId),
+    ["checkin-streak", "other"],
+  );
+
+  const cooled = memoryStore();
+  await cooled.insert(
+    draft({
+      ruleId: "sample",
+      decision: "hold",
+      status: "held",
+      createdAt: new Date(now.getTime() - 60 * 60 * 1000),
+      triggerKey: "earlier",
+    }),
+  );
+  assert.equal(
+    await evaluate(
+      { type: "checkin_saved", userId: "member-a", triggerKey: "later", now },
+      { store: cooled, flag: true, salt, rules: [rule()], metrics },
+    ),
+    0,
+  );
+
+  const once = memoryStore();
+  const event = { type: "checkin_saved" as const, userId: "member-a", triggerKey: "event-1", now };
+  const input = { store: once, flag: true, salt, rules: [rule()], metrics };
+  assert.equal(await evaluate(event, input), 1);
+  assert.equal(await evaluate(event, input), 0);
+  assert.equal(once.rows.length, 1);
+
+  const held = memoryStore();
+  await evaluate(event, {
+    store: held,
+    flag: true,
+    salt,
+    rules: [rule({ send_probability: 0 })],
+    metrics,
+  });
+  assert.equal(held.rows[0].decision, "hold");
+  assert.equal((await activeNudges("member-a", 5, { store: held, flag: true, now })).length, 0);
+  assert.equal((await nudgeHistory("member-a", 30, { store: held, flag: true, now })).length, 0);
+
+  const closed = memoryStore();
+  closed.members.push("member-a");
+  let called = false;
+  const throwing = async () => {
+    called = true;
+    throw new Error("signal down");
+  };
+  assert.equal(
+    await evaluate(event, { store: closed, flag: false, salt, rules: [rule()], metrics: throwing }),
+    0,
+  );
+  assert.equal(called, false);
+  assert.deepEqual(
+    await runScheduledNudges(now, { store: closed, flag: false, salt, rules: [rule()], metrics: throwing }),
+    { ran: 0, written: 0 },
+  );
+  closed.setEnabled("member-a", false);
+  assert.equal(
+    await evaluate(event, { store: closed, flag: true, salt, rules: [rule()], metrics }),
+    0,
+  );
+  closed.setEnabled("member-a", true);
+  closed.setConsent("member-a", false);
+  assert.equal(
+    await evaluate(event, { store: closed, flag: true, salt, rules: [rule()], metrics }),
+    0,
+  );
+  assert.equal(
+    await evaluate(event, { store: closed, flag: true, salt: null, rules: [rule()], metrics }),
+    0,
+  );
+  assert.equal(closed.rows.length, 0);
+
+  closed.setConsent("member-a", true);
+  closed.setEnabled("member-a", true);
+  await assert.doesNotReject(() =>
+    emitNudgeEvent(
+      { type: "checkin_saved", userId: "member-a", eventId: "event-1" },
+      { store: closed, flag: true, salt, rules: [rule()], metrics: throwing },
+    ),
+  );
+  assert.equal(closed.rows.length, 0);
+});
+
+test("the morning run writes a recovery nudge when recovery is high", async () => {
+  const store = memoryStore();
+  store.members.push("member-a");
+  const now = new Date("2026-10-22T07:30:00.000Z");
+  const recovery = loadRules().find((item) => item.id === "recovery-morning");
+  assert.ok(recovery);
+  const result = await runScheduledNudges(now, {
+    store,
+    flag: true,
+    salt,
+    rules: [{ ...recovery, send_probability: 1 }],
+    metrics: async () => ({ whoop_recovery_today: 70 }),
+  });
+  assert.equal(result.written, 1);
+  assert.equal(store.rows[0].ruleId, "recovery-morning");
+  assert.equal(store.rows[0].triggerKey, dateKey(now.getTime()));
+  assert.equal(store.rows[0].decision, "send");
+  assert.equal(store.rows[0].status, "pending");
 });
