@@ -46,6 +46,33 @@ export type DemoAssociation = {
   not_causal: true;
 };
 
+export type DemoForecastSegment = "full" | "limited" | "insufficient";
+
+export type DemoForecastPoint = {
+  date: string;
+  q10: number;
+  q50: number;
+  q90: number;
+};
+
+export type DemoForecastBand = {
+  measure_id: string;
+  segment: DemoForecastSegment;
+  history_days: number;
+  window_start: string;
+  window_end: string;
+  status: string;
+  points: DemoForecastPoint[];
+  inside: number | null;
+  compared: number | null;
+};
+
+export type DemoForecastModel = {
+  model_id: string;
+  model_revision: string;
+  created_at: string;
+};
+
 export type DemoSnapshot = {
   experiment: unknown;
   concept: unknown;
@@ -55,6 +82,9 @@ export type DemoSnapshot = {
   engine_proof: DemoEngineRow[];
   associations: DemoAssociation[];
   generated_at: string;
+  // Optional so snapshots taken before the forecast job still load.
+  forecast_model?: DemoForecastModel;
+  forecast_bands?: DemoForecastBand[];
 };
 
 export function assertDemoSnapshotSafe(payload: DemoSnapshot) {
@@ -63,6 +93,12 @@ export function assertDemoSnapshotSafe(payload: DemoSnapshot) {
   assertNoSpeech("demo_coverage", [payload.coverage]);
   assertNoSpeech("demo_engine_proof", payload.engine_proof);
   assertNoSpeech("demo_associations", payload.associations);
+  if (payload.forecast_model) {
+    assertNoSpeech("demo_forecast_model", [payload.forecast_model]);
+  }
+  if (payload.forecast_bands) {
+    assertNoSpeech("demo_forecast_bands", payload.forecast_bands);
+  }
 }
 
 export const DEMO_MEASURES = [

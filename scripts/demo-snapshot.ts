@@ -2,6 +2,12 @@ import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 
 import { loadLocalEnv } from "./load-env";
+import {
+  buildForecastBands,
+  countBandsBySegment,
+  forecastModelFrom,
+  type ForecastRow,
+} from "@/src/features/demo/bands";
 import { assertDemoSnapshotSafe, type DemoSnapshot } from "@/src/features/demo/snapshot";
 import { db, ready } from "@/src/platform/db";
 import { warehouse, warehouseEnabled } from "@/src/platform/warehouse/client";
@@ -80,18 +86,45 @@ async function main() {
             order by n_with_outcome desc
             limit 6`,
   });
+  let forecastRows: ForecastRow[] = [];
+  try {
+    const [forecasts] = await bq.query({
+      location: "europe-west2",
+      query: `select run_id, created_at, model_id, model_revision, feature_id, history_segment,
+                     history_days, window_start, window_end, target_date, q10, q50, q90, status
+              from \`the-ordinary-512212.ordinary_effects.forecasts\`
+              where experiment_id = @experiment_id
+                and member_key = @member_key
+                and run_id = (
+                  select run_id
+                  from \`the-ordinary-512212.ordinary_effects.forecasts\`
+                  where experiment_id = @experiment_id and member_key = @member_key
+                  order by created_at desc
+                  limit 1
+                )
+              order by feature_id, target_date`,
+      params: { experiment_id: id, member_key: key },
+    });
+    forecastRows = (forecasts as Record<string, unknown>[]).map(forecastRow);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/not found/i.test(message)) {
+      throw error;
+    }
+    console.error("No forecasts table yet. Run pnpm forecast:run first for a baseline band.");
+  }
 
   const payload: DemoSnapshot = {
     experiment,
     concept,
     series: (series as Record<string, unknown>[]).map((row) => ({
-      date: String(row.date).slice(0, 10),
+      date: dateString(row.date),
       measure_id: String(row.measure_id),
       value_number: numberOrNull(row.value_number),
       study_day: Number(row.study_day ?? 0),
     })),
     partner_points: (partner as Record<string, unknown>[]).map((row) => ({
-      date: String(row.date).slice(0, 10),
+      date: dateString(row.date),
       measure_id: String(row.measure_id),
       timepoint_id: String(row.timepoint_id),
       value_number: numberOrNull(row.value_number),
@@ -120,6 +153,10 @@ async function main() {
     })),
     generated_at: new Date().toISOString(),
   };
+  if (forecastRows.length) {
+    payload.forecast_model = forecastModelFrom(forecastRows);
+    payload.forecast_bands = buildForecastBands(forecastRows, payload.series);
+  }
   assertDemoSnapshotSafe(payload);
 
   await db()`
@@ -135,9 +172,46 @@ async function main() {
       partner_points: payload.partner_points.length,
       engine_proof: payload.engine_proof.length,
       associations: payload.associations.length,
+      forecast_bands: countBandsBySegment(payload.forecast_bands ?? []),
       file: "tmp/demo-snapshot.json",
     }),
   );
+}
+
+function forecastRow(row: Record<string, unknown>): ForecastRow {
+  return {
+    run_id: String(row.run_id),
+    created_at: dateTimeString(row.created_at),
+    model_id: String(row.model_id),
+    model_revision: String(row.model_revision),
+    feature_id: String(row.feature_id),
+    history_segment: String(row.history_segment),
+    history_days: Number(row.history_days ?? 0),
+    window_start: dateString(row.window_start),
+    window_end: dateString(row.window_end),
+    target_date: row.target_date == null ? null : dateString(row.target_date),
+    q10: numberOrNull(row.q10),
+    q50: numberOrNull(row.q50),
+    q90: numberOrNull(row.q90),
+    status: String(row.status ?? ""),
+  };
+}
+
+function dateString(value: unknown) {
+  if (value && typeof value === "object" && "value" in value) {
+    return String((value as { value: unknown }).value).slice(0, 10);
+  }
+  return String(value).slice(0, 10);
+}
+
+function dateTimeString(value: unknown) {
+  if (value && typeof value === "object" && "value" in value) {
+    return new Date(String((value as { value: unknown }).value)).toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return new Date(String(value)).toISOString();
 }
 
 function coverageRow(row: Record<string, unknown> | undefined) {
