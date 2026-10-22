@@ -29,7 +29,7 @@ Logs show counts per segment and status only. Values and member keys are never l
 | `forecast.py` | Settings, BigQuery reads and the load job. The Chronos-2 import lives in `predict()` alone. |
 | `test_bands.py` | pytest, no torch, no network. Runs in CI. |
 | `Dockerfile` | `python:3.11-slim`, CPU-only torch, pinned `chronos-forecasting` 2.x, model snapshot at a pinned revision. |
-| `setup.sh` | Idempotent London setup: APIs, `ordinary-forecaster` service account, dataset access, Cloud Run job deploy. |
+| `setup.sh` | Idempotent London setup: APIs, `ordinary-forecaster` service account, dataset access, Cloud Run job deploy, and `run.invoker` on the job for `ordinary-dataform` so the Warehouse workflow can execute it. |
 
 ## Settings
 

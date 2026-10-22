@@ -11,6 +11,9 @@ FORECASTER_NAME="ordinary-forecaster"
 FORECASTER="${FORECASTER_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 JOB_NAME="ordinary-forecast"
 EXPERIMENT_ID="${EXPERIMENT_ID:-barbara-dry-run}"
+# The GitHub Actions account that runs Dataform. The Warehouse workflow executes
+# the job as this account after the nightly spine, so it needs run.invoker.
+DATAFORM_SA="${DATAFORM_SA:-ordinary-dataform@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 if ! declare -F say >/dev/null; then
   say() { printf '%s\n' "$*"; }
@@ -112,4 +115,16 @@ if ! gcloud run jobs deploy "$JOB_NAME" \
   die "Cloud Run deploy failed. If the error names Cloud Build or Artifact Registry permissions, stop and report the exact role it asks for."
 fi
 
+if gcloud iam service-accounts describe "$DATAFORM_SA" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  gcloud run jobs add-iam-policy-binding "$JOB_NAME" \
+    --region "$LOCATION" \
+    --project "$PROJECT_ID" \
+    --member="serviceAccount:${DATAFORM_SA}" \
+    --role="roles/run.invoker" >/dev/null
+  say "Granted run.invoker on $JOB_NAME to $DATAFORM_SA (the Warehouse workflow can execute it)"
+else
+  say "Dataform account $DATAFORM_SA not found; run warehouse/bootstrap.sh first, then re-run this script so the workflow can execute the job"
+fi
+
 say "Forecast job ready: gcloud run jobs execute $JOB_NAME --region $LOCATION --wait   (pnpm forecast:run)"
+say "Next: in GitHub set repository variables FORECAST_JOB_ENABLED=true and APP_URL=https://theordinary.club, and secret CRON_SECRET (same value as Vercel)."
