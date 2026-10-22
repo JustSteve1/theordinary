@@ -114,6 +114,7 @@ export async function exportWarehouse(days = 3) {
         (counts.experiment_enrolments ?? 0) + (await exportEnrolments(userId, member));
       counts.decision_points =
         (counts.decision_points ?? 0) + (await exportDecisions(userId, member, since, full));
+      counts.app_nudges = (counts.app_nudges ?? 0) + (await exportNudges(userId, member, since, full));
     } catch (error) {
       await writeSync({
         stream: "export",
@@ -430,6 +431,62 @@ async function exportEnrolments(userId: string, member: string) {
   return payload.length;
 }
 
+export function appNudgeRow(row: Record<string, unknown>, member: string) {
+  return {
+    nudge_id: opaqueId("n_", String(row.id)),
+    member_key: member,
+    rule_id: text(row.rule_id),
+    rule_version: finite(row.rule_version),
+    kind: text(row.kind),
+    category: text(row.category),
+    trigger: text(row.trigger),
+    decision: text(row.decision),
+    probability: finite(row.probability),
+    rand_u: finite(row.rand_u),
+    message_key: text(row.message_key),
+    priority: finite(row.priority),
+    created_at: iso(row.created_at),
+    expires_at: iso(row.expires_at),
+    status: text(row.status),
+    shown_at: iso(row.shown_at),
+    dismissed_at: iso(row.dismissed_at),
+    helpful: row.helpful === true || row.helpful === false ? row.helpful : null,
+    channel: text(row.channel) ?? "in_app",
+    ingested_at: new Date().toISOString(),
+  };
+}
+
+export function nudgeExportEligible(input: { healthAccepted: boolean; skipError?: string | null }) {
+  return input.healthAccepted && shouldExportMember(input.skipError);
+}
+
+async function exportNudges(userId: string, member: string, since: string, full: boolean) {
+  const cursor = full ? null : (await readSync("app_nudges", userId))?.cursor;
+  const from = cursor ?? since;
+  const rows = await db()`
+    select id::text, rule_id, rule_version, kind, category, trigger, decision,
+           probability, rand_u, message_key, priority, created_at, expires_at,
+           status, shown_at, dismissed_at, helpful, channel
+    from nudges
+    where user_id = ${userId}
+      and greatest(
+        created_at,
+        coalesce(shown_at, created_at),
+        coalesce(dismissed_at, created_at)
+      ) > ${from}
+  `;
+  const payload = rows.map((row) => appNudgeRow(row, member));
+  await loadRows("ordinary_raw", "app_nudges", payload);
+  await writeSync({
+    stream: "app_nudges",
+    scope: userId,
+    cursor: new Date().toISOString(),
+    success: true,
+    error: null,
+  });
+  return payload.length;
+}
+
 async function exportDecisions(userId: string, member: string, since: string, full: boolean) {
   const cursor = full ? null : (await readSync("decision_points", userId))?.cursor;
   const from = cursor ?? since;
@@ -486,6 +543,17 @@ function text(value: unknown) {
 
 function num(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function finite(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function iso(value: unknown) {

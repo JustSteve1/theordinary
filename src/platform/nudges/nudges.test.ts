@@ -6,6 +6,9 @@ import { join } from "node:path";
 
 import { helpfulFor, nudgeAction } from "@/src/features/nudges/interact";
 import { dateKey } from "@/src/platform/recall/dates";
+import { appNudgeRow, nudgeExportEligible } from "@/src/platform/warehouse/export";
+import { assertNoSpeech, isBannedColumn } from "@/src/platform/warehouse/firewall";
+import { TABLE_SCHEMAS } from "@/src/platform/warehouse/tables";
 import { evaluate } from "@/src/platform/nudges/engine";
 import {
   activeNudges,
@@ -536,6 +539,64 @@ test("other code imports nudges only through the public index", () => {
     }
   }
   assert.deepEqual(bad, []);
+});
+
+test("exported nudges are numbers and rule ids, and a withdrawn member is skipped", () => {
+  const previous = process.env.MEMBER_KEY_SECRET;
+  process.env.MEMBER_KEY_SECRET = "member-key-secret-0123456789abcdef";
+  try {
+    const sentence = loadCopy().streak.body;
+    const row = appNudgeRow(
+      {
+        id: "nudge-1",
+        rule_id: "checkin-streak",
+        rule_version: 1,
+        kind: "reinforcement",
+        category: "consistency",
+        trigger: "checkin_saved",
+        decision: "hold",
+        probability: 0.8,
+        rand_u: 0.91,
+        message_key: "streak",
+        priority: 2,
+        created_at: "2026-10-22T08:00:00.000Z",
+        expires_at: "2026-10-23T20:00:00.000Z",
+        status: "held",
+        shown_at: null,
+        dismissed_at: null,
+        helpful: null,
+        channel: "in_app",
+        params: { checkin_streak_days: 3 },
+        message: sentence,
+      },
+      "member",
+    );
+    assert.equal("params" in row, false);
+    assert.equal("message" in row, false);
+    assert.equal(JSON.stringify(row).includes(sentence), false);
+    assert.equal(JSON.stringify(row).includes("checkin_streak_days"), false);
+    assert.equal(row.decision, "hold");
+    assert.equal(row.probability, 0.8);
+    assert.ok(row.nudge_id.startsWith("n_"));
+    assert.doesNotThrow(() => assertNoSpeech("app_nudges", [row]));
+
+    const table = TABLE_SCHEMAS.app_nudges;
+    assert.equal(table.dataset, "ordinary_raw");
+    assert.equal(table.columns.some((column) => column.name === "member_key"), true);
+    assert.equal(table.columns.some((column) => column.name === "params" || column.name === "message"), false);
+    for (const column of table.columns) {
+      assert.equal(isBannedColumn(column.name), false, column.name);
+    }
+    assert.equal(nudgeExportEligible({ healthAccepted: true, skipError: null }), true);
+    assert.equal(nudgeExportEligible({ healthAccepted: false, skipError: null }), false);
+    assert.equal(nudgeExportEligible({ healthAccepted: true, skipError: "consent withdrawn" }), false);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.MEMBER_KEY_SECRET;
+    } else {
+      process.env.MEMBER_KEY_SECRET = previous;
+    }
+  }
 });
 
 function sourceFiles(dir: string): string[] {

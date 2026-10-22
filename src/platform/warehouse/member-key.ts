@@ -8,6 +8,6 @@ export function memberKey(userId: string) {
   return createHmac("sha256", secret).update(userId).digest("hex");
 }
 
-export function opaqueId(prefix: "c_" | "s_" | "b_", value: string) {
+export function opaqueId(prefix: "c_" | "s_" | "b_" | "n_", value: string) {
   return `${prefix}${memberKey(value)}`;
 }
