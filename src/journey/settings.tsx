@@ -1,5 +1,6 @@
 import { SettingsScreen } from "@/src/journey/settings-screen";
 import { loadBee } from "@/src/platform/integrations/bee";
+import { nudgeControls } from "@/src/platform/nudges";
 import { currentProfile } from "@/src/platform/recall/guard";
 import { sectionLabel } from "@/src/platform/shell/ui";
 
@@ -21,6 +22,7 @@ export async function SettingsFlow({
     : bee?.status === "ok"
       ? "Connected"
       : "Bee is quiet right now";
+  const nudges = await nudgeControls(profile.id);
 
   return (
     <div className="text-stone-400">
@@ -39,7 +41,7 @@ export async function SettingsFlow({
         </p>
       ) : null}
       <div className="mt-4">
-        <SettingsScreen profile={profile} beeLabel={beeLabel} />
+        <SettingsScreen profile={profile} beeLabel={beeLabel} nudges={nudges} />
       </div>
     </div>
   );

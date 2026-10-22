@@ -7,6 +7,7 @@ import { Button, FieldLabel, Panel } from "@/src/platform/shell/ui";
 import { signOutRecall } from "@/src/platform/auth-actions";
 import type { FormState } from "@/src/platform/recall/form";
 import type { RecallProfile } from "@/src/platform/recall/types";
+import { setNudgesEnabled } from "@/src/features/nudges/actions";
 import {
   changePassword,
   disconnectBee,
@@ -23,6 +24,7 @@ export function SettingsControls({
   beeLabel,
   connectBee,
   ReminderForm,
+  nudges = null,
 }: {
   profile: RecallProfile;
   beeLabel: string;
@@ -32,6 +34,7 @@ export function SettingsControls({
     onClose: () => void;
     current?: string;
   }) => React.ReactNode;
+  nudges?: { enabled: boolean } | null;
 }) {
   const [reminder, setReminder] = useState(false);
 
@@ -91,6 +94,28 @@ export function SettingsControls({
           <ConnectBee connectBee={connectBee} />
         )}
       </Panel>
+      {nudges ? (
+        <Panel>
+          <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">
+            Nudges
+          </h2>
+          <p className="mt-2">Short notes when something is going well.</p>
+          <form action={setNudgesEnabled} className="mt-4">
+            <label className="flex min-h-12 items-center gap-3">
+              <input
+                type="checkbox"
+                name="enabled"
+                defaultChecked={nudges.enabled}
+                className="size-5"
+              />
+              Show nudges
+            </label>
+            <Button type="submit" variant="secondary" className="mt-3">
+              Save nudges
+            </Button>
+          </form>
+        </Panel>
+      ) : null}
       <Panel>
         <h2 className="text-[11px] font-medium tracking-[0.16em] text-stone-500 uppercase">Reminders</h2>
         <p className="mt-2">

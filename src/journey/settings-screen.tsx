@@ -8,9 +8,11 @@ import type { RecallProfile } from "@/src/platform/recall/types";
 export function SettingsScreen({
   profile,
   beeLabel,
+  nudges = null,
 }: {
   profile: RecallProfile;
   beeLabel: string;
+  nudges?: { enabled: boolean } | null;
 }) {
   return (
     <SettingsControls
@@ -18,6 +20,7 @@ export function SettingsScreen({
       beeLabel={beeLabel}
       connectBee={connectBee}
       ReminderForm={ReminderForm}
+      nudges={nudges}
     />
   );
 }

@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
+import { helpfulFor, nudgeAction } from "@/src/features/nudges/interact";
 import { dateKey } from "@/src/platform/recall/dates";
 import { evaluate } from "@/src/platform/nudges/engine";
 import {
   activeNudges,
   emitNudgeEvent,
+  nudgeControls,
   nudgeHistory,
+  recordNudgeInteraction,
   runScheduledNudges,
+  saveNudgeSetting,
 } from "@/src/platform/nudges";
 import { drawRandU } from "@/src/platform/nudges/randomise";
 import {
@@ -460,3 +465,91 @@ test("the morning run writes a recovery nudge when recovery is high", async () =
   assert.equal(store.rows[0].decision, "send");
   assert.equal(store.rows[0].status, "pending");
 });
+
+test("buttons set status and helpful, and a closed gate shows nothing", async () => {
+  const now = new Date("2026-10-22T08:30:00.000Z");
+  const store = memoryStore();
+  const thanks = await seed(store, { triggerKey: "thanks", createdAt: new Date("2026-10-22T08:00:00.000Z") });
+  const helpful = await seed(store, { ruleId: "richness-up", triggerKey: "helpful", messageKey: "richness_up", params: {}, priority: 3, createdAt: now });
+  const declined = await seed(store, { ruleId: "follow-through", triggerKey: "declined", messageKey: "follow_through", params: { experiment_done_this_week: 1 }, category: "experiments", priority: 2, createdAt: now });
+  const foreign = await seed(store, { userId: "member-b", triggerKey: "foreign", createdAt: now });
+
+  assert.equal(nudgeAction("thanks"), "thanks");
+  assert.equal(nudgeAction("helpful"), "helpful");
+  assert.equal(nudgeAction("not_for_me"), "not_for_me");
+  assert.equal(nudgeAction("nope"), null);
+  assert.equal(helpfulFor("thanks"), null);
+  assert.equal(helpfulFor("helpful"), true);
+  assert.equal(helpfulFor("not_for_me"), false);
+
+  assert.equal(await recordNudgeInteraction("member-b", thanks.id, "helpful", { store, flag: true, now }), false);
+  assert.equal(thanks.status, "pending");
+  assert.equal(await recordNudgeInteraction("member-a", foreign.id, "thanks", { store, flag: true, now }), false);
+  assert.equal(foreign.status, "pending");
+
+  assert.equal(await recordNudgeInteraction("member-a", thanks.id, "thanks", { store, flag: true, now }), true);
+  assert.equal(thanks.status, "dismissed");
+  assert.equal(thanks.helpful, null);
+  assert.equal(await recordNudgeInteraction("member-a", helpful.id, "helpful", { store, flag: true, now }), true);
+  assert.equal(helpful.helpful, true);
+  assert.equal(helpful.status, "dismissed");
+  assert.equal(await recordNudgeInteraction("member-a", declined.id, "not_for_me", { store, flag: true, now }), true);
+  assert.equal(declined.helpful, false);
+  assert.equal(declined.status, "dismissed");
+
+  const visible = memoryStore();
+  await visible.insert(draft({ createdAt: new Date("2026-10-22T08:00:00.000Z") }));
+  assert.deepEqual(await activeNudges("member-a", 1, { store: visible, flag: false, now }), []);
+  assert.deepEqual(await nudgeHistory("member-a", 30, { store: visible, flag: false, now }), []);
+  assert.equal(await nudgeControls("member-a", { store: visible, flag: false }), null);
+  visible.setEnabled("member-a", false);
+  assert.deepEqual(await activeNudges("member-a", 1, { store: visible, flag: true, now }), []);
+  assert.deepEqual(await nudgeHistory("member-a", 30, { store: visible, flag: true, now }), []);
+
+  visible.setEnabled("member-a", true);
+  const [card] = await activeNudges("member-a", 1, { store: visible, flag: true, now });
+  assert.equal(card.title, "On a roll");
+  assert.match(card.message, /3 check-ins/);
+  assert.equal(card.when, "just now");
+  assert.equal(card.status, "shown");
+  assert.equal(visible.rows[0].status, "shown");
+  assert.equal(visible.rows[0].shownAt?.toISOString(), now.toISOString());
+  const again = await activeNudges("member-a", 1, { store: visible, flag: true, now: new Date(now.getTime() + 60_000) });
+  assert.equal(again[0].status, "shown");
+  assert.equal(visible.rows[0].shownAt?.toISOString(), now.toISOString());
+
+  await saveNudgeSetting("member-a", false, { store: visible, flag: true });
+  assert.deepEqual(await activeNudges("member-a", 1, { store: visible, flag: true, now }), []);
+  assert.deepEqual(await nudgeControls("member-a", { store: visible, flag: true }), { enabled: false });
+});
+
+test("other code imports nudges only through the public index", () => {
+  const inside = join("src", "platform", "nudges");
+  const bad: string[] = [];
+  for (const file of [...sourceFiles("src"), ...sourceFiles("app")]) {
+    if (file.startsWith(inside) || file.endsWith("nudges.test.ts")) {
+      continue;
+    }
+    const text = readFileSync(file, "utf8");
+    if (/@\/src\/platform\/nudges\/(?!index["'])/.test(text)) {
+      bad.push(file);
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+
+function sourceFiles(dir: string): string[] {
+  const found: string[] = [];
+  for (const name of readdirSync(dir)) {
+    if (name === "node_modules" || name === ".next") {
+      continue;
+    }
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) {
+      found.push(...sourceFiles(path));
+    } else if (name.endsWith(".ts") || name.endsWith(".tsx")) {
+      found.push(path);
+    }
+  }
+  return found;
+}
