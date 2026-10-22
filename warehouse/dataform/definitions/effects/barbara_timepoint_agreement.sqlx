@@ -1,0 +1,53 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "Reference battery versus nearby recall. Agreement only. Not a diagnosis."
+}
+
+with frame as (
+  select *
+  from ${ref("study_frame_long")}
+  where experiment_id like 'barbara-%'
+),
+battery as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    timepoint_id,
+    date,
+    value_number as battery,
+    is_synthetic
+  from frame
+  where source = 'partner'
+    and measure_id = 'reference.digital_battery'
+),
+nearby as (
+  select
+    b.member_key,
+    b.experiment_id,
+    b.version,
+    b.timepoint_id,
+    b.date as timepoint_date,
+    b.battery,
+    b.is_synthetic as partner_is_synthetic,
+    avg(if(r.measure_id = 'recall.accuracy', r.value_number, null)) as recall_accuracy_near,
+    avg(if(r.measure_id = 'recall.richness', r.value_number, null)) as recall_richness_near,
+    countif(r.measure_id = 'recall.accuracy' and r.value_number is not null) as recall_days_near
+  from battery b
+  left join frame r
+    on r.member_key = b.member_key
+    and r.experiment_id = b.experiment_id
+    and r.version = b.version
+    and r.source = 'ordinary'
+    and r.measure_id in ('recall.accuracy', 'recall.richness')
+    and r.date between b.date and date_add(b.date, interval 2 day)
+  group by 1, 2, 3, 4, 5, 6, 7
+)
+select
+  *,
+  recall_accuracy_near - battery as accuracy_minus_battery,
+  true as not_a_diagnosis,
+  true as not_causal
+from nearby

@@ -27,5 +27,12 @@
   "secondary_outcomes": [
     { "feature_id": "recall.richness", "offset_days": 0, "direction": "increase" },
     { "feature_id": "whoop.hrv_rmssd_ms.dev", "offset_days": 1, "direction": "increase" }
-  ]
+  ],
+  "forecast": {
+    "model": "chronos",
+    "region": "europe-west2",
+    "status": "parked",
+    "targets": ["mood_check.valence", "recall.richness", "whoop.hrv_rmssd_ms.dev"],
+    "note": "Forecasts the series after a London endpoint exists. Does not define a clinical marker."
+  }
 }

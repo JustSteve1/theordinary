@@ -1,0 +1,39 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "Pearson associations inside the BARBARA window. not_causal on every row."
+}
+
+with pairs as (
+  select * from ${ref("barbara_daily_pairs")}
+)
+select
+  experiment_id,
+  version,
+  'sleep_to_next_day_accuracy' as pair_id,
+  corr(sleep_asleep_min, next_day_accuracy) as r,
+  countif(sleep_asleep_min is not null and next_day_accuracy is not null) as n,
+  true as not_causal
+from pairs
+group by 1, 2
+union all
+select
+  experiment_id,
+  version,
+  'hrv_to_next_day_accuracy',
+  corr(hrv_rmssd_ms, next_day_accuracy),
+  countif(hrv_rmssd_ms is not null and next_day_accuracy is not null),
+  true
+from pairs
+group by 1, 2
+union all
+select
+  experiment_id,
+  version,
+  'sleep_to_same_day_accuracy',
+  corr(sleep_asleep_min, recall_accuracy),
+  countif(sleep_asleep_min is not null and recall_accuracy is not null),
+  true
+from pairs
+group by 1, 2

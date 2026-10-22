@@ -152,6 +152,6 @@ pnpm demo:snapshot barbara-dry-run
 
 ## Hackathon MVP
 
-A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The Spotify file under `experiments/concepts/` is display-only and is never activated.
+A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The BARBARA marker brief is [`docs/warehouse/BARBARA-BRIEF.md`](docs/warehouse/BARBARA-BRIEF.md). The Spotify file under `experiments/concepts/` is display-only; Chronos is parked for that concept only.
 
 The Python session contract is `python3 -m unittest test_log_session.py` from `skills/episodic-recall`.

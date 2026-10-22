@@ -1,0 +1,46 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "Same-window sleep and HRV with next-day recall. Association, not cause."
+}
+
+with frame as (
+  select *
+  from ${ref("study_frame_long")}
+  where experiment_id like 'barbara-%'
+    and source = 'ordinary'
+),
+today as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    date,
+    max(if(measure_id = 'whoop.sleep_asleep_min', value_number, null)) as sleep_asleep_min,
+    max(if(measure_id = 'whoop.hrv_rmssd_ms', value_number, null)) as hrv_rmssd_ms,
+    max(if(measure_id = 'recall.accuracy', value_number, null)) as recall_accuracy,
+    max(if(measure_id = 'recall.richness', value_number, null)) as recall_richness,
+    max(if(measure_id = 'recall.false_alarm', value_number, null)) as recall_false_alarm
+  from frame
+  group by 1, 2, 3, 4
+)
+select
+  t.member_key,
+  t.experiment_id,
+  t.version,
+  t.date,
+  t.sleep_asleep_min,
+  t.hrv_rmssd_ms,
+  t.recall_accuracy,
+  t.recall_richness,
+  t.recall_false_alarm,
+  n.recall_accuracy as next_day_accuracy,
+  n.recall_richness as next_day_richness,
+  true as not_causal
+from today t
+left join today n
+  on n.member_key = t.member_key
+  and n.experiment_id = t.experiment_id
+  and n.version = t.version
+  and n.date = date_add(t.date, interval 1 day)

@@ -48,3 +48,35 @@ order by experiment_id;
 select experiment_id, status, beta, p025, p975, prob_positive, n_with_outcome
 from `the-ordinary-512212.ordinary_effects_test.effect_estimates`
 order by experiment_id;
+
+-- BARBARA marker row. Research only. marker_present is ptau217 positive.
+select
+  experiment_id,
+  marker_present,
+  marker_ptau217_positive,
+  ptau217_group,
+  battery_baseline,
+  battery_end,
+  recall_accuracy_mean,
+  sleep_asleep_min_mean,
+  hrv_rmssd_ms_mean,
+  partner_is_synthetic,
+  not_a_diagnosis,
+  not_causal
+from `the-ordinary-512212.ordinary_effects.barbara_member_features`;
+
+-- Battery versus nearby recall.
+select
+  timepoint_id,
+  battery,
+  recall_accuracy_near,
+  recall_richness_near,
+  accuracy_minus_battery,
+  not_causal
+from `the-ordinary-512212.ordinary_effects.barbara_timepoint_agreement`
+order by timepoint_id;
+
+-- Sleep / HRV associations inside the study window. Not cause.
+select experiment_id, pair_id, r, n, not_causal
+from `the-ordinary-512212.ordinary_effects.barbara_associations`
+order by pair_id;
