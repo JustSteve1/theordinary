@@ -28,10 +28,13 @@ Schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become th
 | --- | --- | --- | --- |
 | 06:45 | 07:45 | 06:45 | `/api/cron/whoop-sync` reads the last 3 days of WHOOP for consented, connected members. Latest start 07:44 UTC, finished by 07:49 UTC with the 5 minute function cap |
 | 07:15 | 08:15 | 07:15 | `/api/cron/experiments-decide` writes today's decision for each active experiment. It does not read BigQuery |
-| 08:15 | 09:15 | 08:15 | `/api/cron/warehouse-export` exports scores, consents, confounders, and Bee metadata. Earliest start is 26 minutes after WHOOP's latest finish |
+| 07:30 | 08:30 | 07:30 | `/api/cron/nudges-morning` evaluates the recovery nudge for consented members who still have nudges on. It does not read BigQuery |
+| 08:15 | 09:15 | 08:15 | `/api/cron/warehouse-export` exports scores, consents, confounders, Bee metadata, and nudge decisions. Earliest start is 26 minutes after WHOOP's latest finish |
 | 09:40 and 11:40 | 10:40 and 12:40 | 09:40 and 11:40 | GitHub Actions runs Dataform. The first chance is 21 minutes after the export's latest finish. The synthetic effect test runs before production effects. The second run is safe because Dataform rebuilds core, features, and effects from scratch |
 
-Vercel sends `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules (100 cron jobs per project), so the three routes stay separate. Neither Dataform minute is minute 0.
+Vercel sends `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules (100 cron jobs per project), so the four routes stay separate. Neither Dataform minute is minute 0.
+
+`ordinary_raw.app_nudges` stores rule ids, the send or hold decision, probability, `rand_u`, status, and timestamps. It does not store rendered text or message parameters. The table is partitioned on `ingested_at` and clustered on `member_key`. Erasure deletes that member's rows with the other raw tables. The export appends a row when it is created, shown, or dismissed after the sync cursor. Only members with health consent are included.
 
 The Warehouse workflow writes `warehouse/dataform/.df-credentials.json` after Workload Identity auth, with only the project id and `europe-west2`. Application Default Credentials come from that auth step. The file is gitignored. It is not a service-account key.
 

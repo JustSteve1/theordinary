@@ -9,7 +9,7 @@ export function recoveryMetric(input: {
   value: number | null;
   atMs: number | null;
   now: number;
-}) {
+}): Record<string, number> {
   if (input.status !== "ok") {
     return {};
   }

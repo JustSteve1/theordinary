@@ -49,6 +49,8 @@ docs/recall/                 Screen pack and journey map
 
 **Bee recordings.** Conversations and journals are read into the member snapshot. After a check-in saves, the spoken text is posted back (journal, then conversation, then a confirmed fact — first path that works is locked for the account). Scores, probes, and scoring artifacts stay here. Echoes tagged `Check-in from The Ordinary` are stripped before scoring and chat.
 
+**Nudges.** In-app notes that reinforce a check-in streak, a richer recall, a high-recovery morning, or an experiment marked done. Each matching rule is sent with probability 0.8 or held, and both outcomes are stored. Home and `/app/nudges` show sends only. `NUDGES_ENABLED` defaults off. Rules and copy live in [`nudges/`](nudges). The module notes are in [`src/platform/nudges/README.md`](src/platform/nudges/README.md).
+
 ## Engineering decisions
 
 **Check-ins are immutable.** [`checkins`](src/platform/db.ts) freeze `talk_text` and the inputs used to score that talk. [`score_runs`](src/platform/db.ts) are unique on `(checkin_id, scorer_version, config_hash)` and insert with `on conflict do nothing`. Re-scoring is idempotent. The dashboard can fill missing runs on read.
@@ -77,11 +79,11 @@ docs/recall/                 Screen pack and journey map
 
 Analysis lives in BigQuery in London (`europe-west2`, project `the-ordinary-512212`). Neon stays the source of truth. Pages do not read BigQuery. Speech, names, emails, and member UUIDs stay out of the warehouse. Members are `member_key`, an HMAC of the account id. The runbook is [`docs/warehouse/RUNBOOK.md`](docs/warehouse/RUNBOOK.md). The feature list is [`docs/warehouse/features.md`](docs/warehouse/features.md).
 
-Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC. Vercel calls the three cron routes with `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules, so they stay as three routes. Each route returns quietly when the warehouse env vars are missing.
+Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, morning nudges are 07:30 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC. Vercel calls the four cron routes with `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules, so they stay as four routes. The warehouse routes return quietly when the warehouse env vars are missing.
 
 Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials. A Kedro project at [`warehouse/kedro`](warehouse/kedro) is the local catalog: a plain run stays off BigQuery, and `--env=prod --pipelines=land_user1` is what writes raw rows before this is deployed.
 
-New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`. `WAREHOUSE_IMPERSONATE` is local only.
+New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`, `NUDGES_ENABLED`, `NUDGE_SALT`. `WAREHOUSE_IMPERSONATE` is local only.
 
 ## Routes
 
@@ -102,10 +104,12 @@ New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL
 | Wrap-up | `/checkin/done` |
 | Membership, Connections, scores | `/app` |
 | Chat | `/app/chat` |
+| Nudges inbox | `/app/nudges` |
 | Settings | `/settings` |
 | WHOOP OAuth | `/api/whoop/connect`, `/callback`, `/disconnect` |
 | WHOOP webhook | `/api/whoop/webhook` |
 | Nightly warehouse | `/api/cron/whoop-sync`, `/api/cron/warehouse-export`, `/api/cron/experiments-decide` |
+| Morning nudges | `/api/cron/nudges-morning` |
 
 ## Data the scoring path cares about
 
@@ -137,6 +141,7 @@ pnpm lint
 pnpm build
 pnpm test:scoring
 pnpm test:warehouse
+pnpm test:nudges
 pnpm warehouse:status
 pnpm experiments:activate first-experiment
 pnpm experiments:end first-experiment
@@ -145,5 +150,7 @@ pnpm experiments:end first-experiment
 `pnpm test:scoring` runs the v2 scoring cases (including Tests A/B/C) and the Bee export firewall (payload is talk text only; Ordinary-tagged echoes are dropped; a successful export is not posted twice).
 
 `pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser, and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail. It does not pretend the warehouse is connected when the env vars are missing.
+
+`pnpm test:nudges` checks the rule validator, the randomised send or hold, the London-day caps, and that an exported nudge row has no message text.
 
 The Python session contract is `python3 -m unittest test_log_session.py` from `skills/episodic-recall`.

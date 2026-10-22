@@ -3,7 +3,7 @@ import type { Trigger } from "@/src/platform/nudges/rules";
 import { londonIsoWeek } from "@/src/platform/nudges/time";
 import type { SignalContext, SignalSource } from "@/src/platform/nudges/signals/types";
 
-export function experimentMetrics(doneThisWeek: number) {
+export function experimentMetrics(doneThisWeek: number): Record<string, number> {
   return { experiment_done_this_week: doneThisWeek };
 }
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 import { db, ready } from "@/src/platform/db";
-import type { NudgeDraft, NudgeRow, NudgeStatus, NudgeStore } from "@/src/platform/nudges/types";
+import type { NudgeRow, NudgeStatus, NudgeStore } from "@/src/platform/nudges/types";
 
 const COLUMNS = `
   id::text, user_id::text, rule_id, rule_version, kind, category, trigger, trigger_key,

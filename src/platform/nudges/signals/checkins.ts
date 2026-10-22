@@ -52,7 +52,11 @@ export function richnessMetrics(rows: RichnessSample[]) {
   return metrics;
 }
 
-export function checkinMetrics(dates: string[], rows: RichnessSample[], today: string) {
+export function checkinMetrics(
+  dates: string[],
+  rows: RichnessSample[],
+  today: string,
+): Record<string, number> {
   return {
     checkin_streak_days: checkinStreakDays(dates, today),
     ...richnessMetrics(rows),
