@@ -246,7 +246,7 @@ async function exportSessions(userId: string, member: string, since: string, ful
   const from = cursor ?? since;
   const rows = await db()`
     select id::text, session_date, recorded_at, aborted, short, practice, duration_ms,
-           poor_sleep, unwell_or_alcohol
+           poor_sleep, unwell_or_alcohol, mood, mood_at
     from recall_sessions
     where user_id = ${userId} and recorded_at > ${from}
   `;
@@ -261,6 +261,8 @@ async function exportSessions(userId: string, member: string, since: string, ful
     duration_ms: num(row.duration_ms),
     poor_sleep: Boolean(row.poor_sleep),
     unwell_or_alcohol: Boolean(row.unwell_or_alcohol),
+    mood: num(row.mood),
+    mood_at: row.mood_at ? iso(row.mood_at) : null,
     ingested_at: new Date().toISOString(),
   }));
   await loadRows("ordinary_raw", "app_recall_sessions", payload);

@@ -15,7 +15,9 @@ export const copy = {
   followUpLast: "Anything else at all, even small things?",
   saving: "Thanks. Saving your check-in…",
   wrapUp:
-    "Thanks for talking me through your day. Tomorrow I'll ask about today.",
+    "Thanks for talking me through your day. Tomorrow evening I'll ask about today.",
+  moodAsk: "Before you go: how do you feel right now?",
+  moodSaved: "Noted. That goes next to tonight's check-in, not into the score.",
   stopped: "Check-in ended. Nothing was saved.",
   declined: "No problem.",
   distress:
@@ -23,7 +25,7 @@ export const copy = {
   notEnough:
     "There isn't enough from yesterday to build a check-in. That's fine, try again tomorrow.",
   day1: "Your first check-in is tomorrow. Today, just go about your day.",
-  ready: "Ready when you are. It takes about 3 minutes.",
+  ready: "Tonight's check-in: three minutes about yesterday. Ready when you are.",
   neededToday: "A check-in is still needed today.",
   lastShort: "The last one was short. This recording can add the rest.",
   doneToday: "You've checked in today. See you tomorrow.",

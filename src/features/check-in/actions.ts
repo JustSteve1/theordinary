@@ -27,6 +27,7 @@ import {
   insertTalk,
   listSessions,
   loadRubric,
+  saveSessionMood,
   updateMicStatus,
 } from "@/src/platform/recall/store";
 import { logSession } from "@/src/platform/recall/log-session";
@@ -286,6 +287,17 @@ function probeAnswers(value: TalkPayload["probeAnswers"]) {
       answer: allowed.has(item?.answer) ? item.answer : "dont_know",
     }))
     .filter((item) => item.id);
+}
+
+export async function saveMood(formData: FormData) {
+  const profile = await requireRecall({ min: "done", max: "done" });
+  const sessionId = uuid(field(formData, "session"));
+  const mood = Number(field(formData, "mood"));
+  if (sessionId) {
+    await saveSessionMood(profile.id, sessionId, mood);
+    redirect(`/checkin/done?session=${sessionId}`);
+  }
+  redirect("/home");
 }
 
 export async function discardReveal(formData: FormData) {

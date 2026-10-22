@@ -36,6 +36,7 @@ Sleep and recovery are dated to the local morning the sleep ended. A WHOOP physi
 | `recall.intrusion` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | intrusion from the score run. | no | 0 |
 | `recall.dimension_mean` | score | Check-in target_date. Latest scorer per check-in. Practice excluded. | Mean of the four dimension levels. | yes | 0 |
 | `recall.lag_days` | days | Check-in target_date. | conditions.lagDays. |  | 0 |
+| `recall.mood` | 1 to 5 | Check-in target_date. Tapped at wrap-up on the evening of the check-in. | One tap, 1 low to 5 great. An outcome, never a scoring input. | yes | 0 |
 | `confounder.poor_sleep` | 0 or 1 | Session linked to the check-in. | 1 when the member marked poor sleep. | no | 0 |
 | `confounder.unwell_or_alcohol` | 0 or 1 | Session linked to the check-in. | 1 when the member marked unwell or alcohol. | no | 0 |
 | `whoop.sleep_midpoint_sd_7d` | minutes | Prior 7 nights, excluding tonight. | Standard deviation of clock-adjusted midpoints. Values after noon are shifted by -1440 so midnight wraps. | no | 7 |

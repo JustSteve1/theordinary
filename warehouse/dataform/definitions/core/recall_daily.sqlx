@@ -60,7 +60,8 @@ joined as (
     ) as dimension_mean,
     s.lag_days,
     if(sess.session_id is null, null, if(sess.poor_sleep, 1, 0)) as poor_sleep,
-    if(sess.session_id is null, null, if(sess.unwell_or_alcohol, 1, 0)) as unwell_or_alcohol
+    if(sess.session_id is null, null, if(sess.unwell_or_alcohol, 1, 0)) as unwell_or_alcohol,
+    sess.mood
   from checkins c
   join scores s using (member_key, checkin_id)
   left join sessions sess
@@ -90,5 +91,6 @@ select
   lag_days,
   poor_sleep,
   unwell_or_alcohol,
+  mood,
   checkin_id
 from latest

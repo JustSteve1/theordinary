@@ -36,6 +36,7 @@ select
   r.lag_days,
   r.poor_sleep,
   r.unwell_or_alcohol,
+  r.mood,
   array_concat(
     ifnull(w.whoop_ids, []),
     ifnull(b.bee_ids, []),

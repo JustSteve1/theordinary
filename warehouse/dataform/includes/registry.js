@@ -26,6 +26,7 @@ const BASE = [
   column("recall.intrusion", "intrusion", "Intrusion", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "intrusion from the score run.", false, 0),
   column("recall.dimension_mean", "dimension_mean", "Dimension mean", "score", "recall", "Check-in target_date. Latest scorer per check-in. Practice excluded.", "Mean of the four dimension levels.", true, 0),
   column("recall.lag_days", "lag_days", "Recall lag", "days", "recall", "Check-in target_date.", "conditions.lagDays.", null, 0),
+  column("recall.mood", "mood", "Mood", "1 to 5", "recall", "Check-in target_date. Tapped at wrap-up on the evening of the check-in.", "One tap, 1 low to 5 great. An outcome, never a scoring input.", true, 0),
   column("confounder.poor_sleep", "poor_sleep", "Poor sleep", "0 or 1", "recall", "Session linked to the check-in.", "1 when the member marked poor sleep.", false, 0),
   column("confounder.unwell_or_alcohol", "unwell_or_alcohol", "Unwell or alcohol", "0 or 1", "recall", "Session linked to the check-in.", "1 when the member marked unwell or alcohol.", false, 0),
 ];

@@ -56,7 +56,7 @@ export function HomeCard({
 
   return (
     <div className="flex min-h-[70vh] flex-col text-stone-400">
-      <p className={sectionLabel}>Hello world</p>
+      <p className={sectionLabel}>Evening check-in</p>
       <h1 className="mt-2 text-[32px] font-medium leading-9 tracking-tight text-stone-100">
         Hello {name}
       </h1>

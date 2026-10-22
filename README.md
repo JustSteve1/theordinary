@@ -167,3 +167,5 @@ A one-member demo of a measurement-partner study. Activate `barbara-dry-run` wit
 `pnpm test:nudges` checks the rule validator, the randomised send or hold, the London-day caps, and that an exported nudge row has no message text.
 
 The Python session contract is `python3 -m unittest test_log_session.py` from `skills/episodic-recall`.
+
+`pnpm audit --audit-level=high` ignores one advisory by id in `package.json` (`pnpm.auditConfig.ignoreGhsas`): `braces` ≤3.0.3 (GHSA-vfj7-8cjw-p6xm) is pulled in by `eslint-config-next` at lint time only and no patched release exists. Remove the ignore when `eslint-config-next` stops depending on it.

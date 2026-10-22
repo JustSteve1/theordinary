@@ -527,6 +527,32 @@ export async function insertSession(
   `;
 }
 
+export const MOOD_MIN = 1;
+export const MOOD_MAX = 5;
+
+export async function readSessionMood(userId: string, sessionId: string) {
+  await ready();
+  const rows = await db()`
+    select mood from recall_sessions where user_id = ${userId} and id = ${sessionId}
+  `;
+  const value = rows[0]?.mood;
+  return typeof value === "number" ? value : null;
+}
+
+export async function saveSessionMood(userId: string, sessionId: string, mood: number) {
+  if (!Number.isInteger(mood) || mood < MOOD_MIN || mood > MOOD_MAX) {
+    return false;
+  }
+  await ready();
+  const rows = await db()`
+    update recall_sessions
+    set mood = ${mood}, mood_at = now()
+    where user_id = ${userId} and id = ${sessionId}
+    returning id
+  `;
+  return rows.length > 0;
+}
+
 export type SessionNote = {
   recordedAt: string;
   aborted: boolean;

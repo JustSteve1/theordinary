@@ -127,6 +127,8 @@ create table if not exists recall_rubric (
 );
 
 alter table recall_sessions add column if not exists practice boolean not null default false;
+alter table recall_sessions add column if not exists mood smallint;
+alter table recall_sessions add column if not exists mood_at timestamptz;
 
 create table if not exists checkins (
   id uuid primary key,

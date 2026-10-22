@@ -166,7 +166,7 @@ Stages: FL-5, CI-1, SM-1
   | State | When | Card shows | Primary action |
   |---|---|---|---|
   | `day1` | Just finished onboarding | "Your first check-in is tomorrow. Today, just go about your day." | Set a reminder (S-09) |
-  | `ready` | Enough was captured yesterday | "Ready when you are. It takes about 3 minutes." | Start check-in → S-11 |
+  | `ready` | Enough was captured yesterday | "Tonight's check-in: three minutes about yesterday. Ready when you are." | Start check-in → S-11 |
   | `not_enough_data` | Pre-check found too little captured yesterday (CI-1 guardrail) | "There isn't enough from yesterday to build a check-in. That's fine, try again tomorrow." | none; link to Settings |
   | `no_source` | Day capture off and no Bee | "Turn on day capture or connect a Bee to start check-ins." | Go to Settings |
   | `mic_blocked` | Mic permission denied | "Recall can't use your microphone." | How to fix |
@@ -209,11 +209,12 @@ One screen driven by a state machine. The voice session panel and the Stop butto
 Stages: CI-5, CI-6
 
 - **Content, in order:**
-  1. Reassurance and tomorrow (CI-5 idea, adopted): "Thanks for talking me through your day. Tomorrow I'll ask about today."
+  1. Reassurance and tomorrow (CI-5 idea, adopted): "Thanks for talking me through your day. Tomorrow evening I'll ask about today."
   2. Baseline progress while fewer than 5 sessions exist: "That's check-in 2 of 5 towards your baseline." (D2)
-  3. An optional reveal (CI-6): "Want to see what else was captured?" Tapping it shows the missed key moments as short phrases. Show them only on this screen; never store or re-show them.
-  4. A review notice, only if `trend.flag == "review_suggested"`: use the exact copy in `content-and-guardrails.md`.
-  5. Actions: Back to home (primary), View dashboard (secondary).
+  3. One-tap mood: "Before you go: how do you feel right now?" with five buttons, 1 Low to 5 Great. One tap saves `recall_sessions.mood` and the row reads "Noted. That goes next to tonight's check-in, not into the score." Mood is an experiment outcome (`recall.mood`), never a scoring input.
+  4. An optional reveal (CI-6): "Want to see what else was captured?" Tapping it shows the missed key moments as short phrases. Show them only on this screen; never store or re-show them.
+  5. A review notice, only if `trend.flag == "review_suggested"`: use the exact copy in `content-and-guardrails.md`.
+  6. Actions: Back to home (primary), View dashboard (secondary).
 - **No score on this screen** (D3). The trend lives on the dashboard.
 - **Done when:** leaving this screen discards the reveal list and any working data the client holds (CI-6, agent lane).
 

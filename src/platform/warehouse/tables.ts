@@ -104,6 +104,8 @@ export const TABLE_SCHEMAS: Record<string, { dataset: string; columns: Column[] 
       { name: "duration_ms", type: "INT64" },
       { name: "poor_sleep", type: "BOOL" },
       { name: "unwell_or_alcohol", type: "BOOL" },
+      { name: "mood", type: "INT64" },
+      { name: "mood_at", type: "TIMESTAMP" },
       { name: "ingested_at", type: "TIMESTAMP", mode: "REQUIRED" },
     ],
   },

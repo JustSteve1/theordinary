@@ -63,7 +63,8 @@ normal, abnormal, impaired, impairment, decline, declining, deficit, deteriorate
 | Opening prompt (D4) | "Tell me about yesterday: what you did, who you saw, the highs and lows. Take your time." |
 | Follow-ups (exactly two) | "Anything else?" then "Anything else at all, even small things?" |
 | Saving | "Thanks. Saving your check-in…" |
-| Wrap-up | "Thanks for talking me through your day. Tomorrow I'll ask about today." |
+| Wrap-up | "Thanks for talking me through your day. Tomorrow evening I'll ask about today." |
+| Mood tap (wrap-up) | "Before you go: how do you feel right now?" then "Noted. That goes next to tonight's check-in, not into the score." |
 | Stopped by person | "Check-in ended. Nothing was saved." |
 | Distress stop | "Let's leave it there for today. Nothing's been saved, and we can try again another time." |
 | Not enough data | "There isn't enough from yesterday to build a check-in. That's fine, try again tomorrow." |

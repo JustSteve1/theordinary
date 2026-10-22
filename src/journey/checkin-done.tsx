@@ -7,7 +7,8 @@ import { copy } from "@/src/platform/recall/copy";
 import { recallDefaults } from "@/src/platform/recall/defaults";
 import { requireRecall } from "@/src/platform/recall/guard";
 import { discardReveal } from "@/src/features/check-in/actions";
-import { listSessions } from "@/src/platform/recall/store";
+import { MoodTap } from "@/src/features/check-in/mood";
+import { listSessions, readSessionMood } from "@/src/platform/recall/store";
 import { cleanSessions } from "@/src/platform/recall/trend";
 
 export const metadata: Metadata = { title: "Wrap-up" };
@@ -34,6 +35,7 @@ export default async function WrapUpPage({
   }
 
   const reveal = await readReveal();
+  const mood = await readSessionMood(profile.id, session.id);
   const cleanCount = cleanSessions(sessions).length;
   const showReview = session.trend.flag === "review_suggested";
 
@@ -48,6 +50,7 @@ export default async function WrapUpPage({
             your baseline. {copy.baselineHint}
           </p>
         ) : null}
+        <MoodTap sessionId={session.id} mood={mood} />
         <RevealList items={reveal?.missed ?? []} />
         {showReview ? <p>{copy.reviewNotice}</p> : null}
         <form action={discardReveal}>
