@@ -4,6 +4,8 @@ Member web app on Next.js. This file is the engineering map: runtime, layout, wh
 
 Live site: [theordinary.club](https://theordinary.club). Hosted on Vercel. Production database is Neon (Postgres) over TLS.
 
+Hackathon notes from building the Bee and Bedrock paths: [`docs/hackathon/friction-log.md`](docs/hackathon/friction-log.md).
+
 ## Stack
 
 | Layer | Choice |
