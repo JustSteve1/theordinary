@@ -78,7 +78,7 @@ Chat needs `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_REGION`. The m
 
 ## What you should see
 
-Sign up, consent, connect Bee, and talk through yesterday at `/home`. The wrap-up shows Accuracy and Richness as separate numbers. `/app` is the membership week: the score, Connections, and chat. `/app/chat` answers from the Bee and WHOOP brief.
+Sign up, consent, connect Bee, and talk through yesterday at `/home`. The wrap-up shows Accuracy and Richness as separate numbers, then a mood tap. `/app` is the membership week: the score, the day card, Connections, and chat. `/app/chat` answers from the Bee and WHOOP brief. The stage script is [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md).
 
 ## Tests
 
