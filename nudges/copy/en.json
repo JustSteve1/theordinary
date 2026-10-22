@@ -1,0 +1,18 @@
+{
+  "streak": {
+    "title": "On a roll",
+    "body": "That's {checkin_streak_days} check-ins in a row. Keeping the rhythm is what makes your trend meaningful."
+  },
+  "richness_up": {
+    "title": "Rich recall",
+    "body": "Today's recall was richer than your recent average. Yesterday clearly stuck."
+  },
+  "recovery_high": {
+    "title": "Well recovered",
+    "body": "Recovery {whoop_recovery_today}% this morning. A good day to spend energy on something that matters to you."
+  },
+  "follow_through": {
+    "title": "Follow-through",
+    "body": "Done. That's {experiment_done_this_week} this week. Small steps, repeated, are how habits form."
+  }
+}

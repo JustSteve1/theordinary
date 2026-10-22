@@ -1,0 +1,15 @@
+{
+  "id": "recovery-morning",
+  "version": 1,
+  "kind": "reinforcement",
+  "category": "recovery",
+  "trigger": "daily_morning",
+  "conditions": {
+    "all": [{ "metric": "whoop_recovery_today", "op": "gte", "value": 67 }]
+  },
+  "message": { "key": "recovery_high", "params": ["whoop_recovery_today"] },
+  "send_probability": 0.8,
+  "cooldown_hours": 20,
+  "priority": 1,
+  "expires_after_hours": 36
+}

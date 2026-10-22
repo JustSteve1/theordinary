@@ -1,0 +1,15 @@
+{
+  "id": "checkin-streak",
+  "version": 1,
+  "kind": "reinforcement",
+  "category": "consistency",
+  "trigger": "checkin_saved",
+  "conditions": {
+    "all": [{ "metric": "checkin_streak_days", "op": "in", "value": [3, 7, 14, 30] }]
+  },
+  "message": { "key": "streak", "params": ["checkin_streak_days"] },
+  "send_probability": 0.8,
+  "cooldown_hours": 20,
+  "priority": 2,
+  "expires_after_hours": 36
+}
