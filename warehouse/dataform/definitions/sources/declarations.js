@@ -20,3 +20,6 @@ raw.forEach((name) => {
 ["experiments", "experiment_enrolments", "decision_points"].forEach((name) => {
   declare({ database: "the-ordinary-512212", schema: "ordinary_experiments", name });
 });
+
+// Written by the Cloud Run job in warehouse/forecast. A source, never rebuilt here.
+declare({ database: "the-ordinary-512212", schema: "ordinary_effects", name: "forecasts" });

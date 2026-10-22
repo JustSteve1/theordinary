@@ -20,6 +20,7 @@
     "partner:sample-file": "tsx scripts/partner-sample-file.ts",
     "partner:import": "tsx scripts/partner-import.ts",
     "demo:snapshot": "tsx scripts/demo-snapshot.ts",
+    "forecast:run": "gcloud run jobs execute ordinary-forecast --region europe-west2 --wait",
     "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx,md}\"",
     "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx,md}\""
   },
