@@ -3,7 +3,12 @@ import { randomUUID } from "crypto";
 import { db, ready } from "@/src/platform/db";
 import { loadWhoop } from "@/src/platform/integrations/whoop";
 import { dateKey } from "@/src/platform/recall/dates";
-import { configHash, validateExperiment, type ExperimentConfig } from "@/src/platform/experiments/config";
+import {
+  configHash,
+  validateExperiment,
+  type Domain,
+  type ExperimentConfig,
+} from "@/src/platform/experiments/config";
 import { hasDecisionAssigner } from "@/src/platform/experiments/protocol/designs";
 import type { MonitoringConfig } from "@/src/platform/experiments/protocol/types";
 import { planDecision } from "@/src/platform/experiments/plan";
@@ -94,11 +99,22 @@ async function insertDecision(
   return rows[0] ? String(rows[0].id) : null;
 }
 
-export async function todayDecision(userId: string, now = new Date()) {
+export type TodayDecision = {
+  id: string;
+  experimentId: string;
+  title: string | null;
+  domain: Domain | null;
+  arm: string;
+  instruction: string | null;
+  delivered: boolean;
+  response: "done" | "skipped" | null;
+};
+
+export async function todayDecisions(userId: string, now = new Date()): Promise<TodayDecision[]> {
   await ready();
   const day = dateKey(now.getTime());
   const rows = await db()`
-    select d.id::text, d.arm, d.available, d.delivered_at, e.config
+    select d.id::text, d.experiment_id, d.arm, d.available, d.delivered_at, d.response, e.config
     from decision_points d
     join experiments e on e.id = d.experiment_id and e.version = d.version
     where d.user_id = ${userId}
@@ -106,20 +122,28 @@ export async function todayDecision(userId: string, now = new Date()) {
       and e.status = 'active'
       and d.available = true
       and d.arm is not null
-    limit 1
+    order by d.experiment_id
   `;
-  const row = rows[0];
-  if (!row) {
-    return null;
-  }
-  const parsed = validateExperiment(row.config);
-  const instruction = parsed.ok ? parsed.config.arms[1].instruction : null;
-  return {
-    id: String(row.id),
-    arm: String(row.arm),
-    instruction,
-    delivered: Boolean(row.delivered_at),
-  };
+  return rows.map((row) => {
+    const parsed = validateExperiment(row.config);
+    const config = parsed.ok ? parsed.config : null;
+    const response = row.response === "done" || row.response === "skipped" ? row.response : null;
+    return {
+      id: String(row.id),
+      experimentId: String(row.experiment_id),
+      title: config?.title ?? null,
+      domain: config?.domain ?? null,
+      arm: String(row.arm),
+      instruction: config?.arms[1].instruction ?? null,
+      delivered: Boolean(row.delivered_at),
+      response,
+    };
+  });
+}
+
+export async function todayDecision(userId: string, now = new Date()) {
+  const [first] = await todayDecisions(userId, now);
+  return first ?? null;
 }
 
 export async function markDelivered(decisionId: string) {

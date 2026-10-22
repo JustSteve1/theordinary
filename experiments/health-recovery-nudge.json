@@ -1,0 +1,35 @@
+{
+  "id": "health-recovery-nudge",
+  "version": 1,
+  "status": "draft",
+  "title": "A morning nudge on recovery days",
+  "domain": "health",
+  "hypothesis": "On mornings when WHOOP has a fresh recovery, a short nudge to spend the day's energy deliberately lifts same-evening mood and next-morning HRV compared with mornings that carry no nudge.",
+  "design": "micro_randomised_daily",
+  "decision_time_local": "08:00",
+  "arms": [
+    { "name": "control", "instruction": null },
+    {
+      "name": "treatment",
+      "instruction": "Your recovery is in. Pick one thing today that deserves your energy and give it a proper go. Mark Done tonight if you did."
+    }
+  ],
+  "treatment_probability": 0.5,
+  "availability": {
+    "requires_whoop_yesterday": true,
+    "skip_dates": []
+  },
+  "primary_outcome": {
+    "feature_id": "recall.mood",
+    "offset_days": 0,
+    "direction": "increase"
+  },
+  "secondary_outcomes": [
+    { "feature_id": "whoop.hrv_rmssd_ms.dev", "offset_days": 1, "direction": "increase" },
+    { "feature_id": "whoop.recovery_score", "offset_days": 1, "direction": "increase" },
+    { "feature_id": "recall.richness", "offset_days": 0, "direction": "increase" }
+  ],
+  "min_days": 28,
+  "max_days": 70,
+  "notes": "Health domain. The nudge is shown on Home and as the day's card. recall.mood is the one-tap mood at that evening's wrap-up, so offset_days 0 is the same day. HRV and recovery are dated to the next morning, so offset_days 1."
+}

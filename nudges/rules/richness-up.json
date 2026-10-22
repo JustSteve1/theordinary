@@ -1,16 +1,28 @@
 {
   "id": "richness-up",
   "version": 1,
-  "kind": "reinforcement",
+  "kind": "reward",
   "category": "memory",
+  "domain": "mindset",
   "trigger": "checkin_saved",
   "conditions": {
     "all": [
-      { "metric": "richness_vs_recent", "op": "gte", "value": 10 },
-      { "metric": "recent_scored_checkins", "op": "gte", "value": 5 }
+      {
+        "metric": "richness_vs_recent",
+        "op": "gte",
+        "value": 10
+      },
+      {
+        "metric": "recent_scored_checkins",
+        "op": "gte",
+        "value": 5
+      }
     ]
   },
-  "message": { "key": "richness_up", "params": [] },
+  "message": {
+    "key": "richness_up",
+    "params": []
+  },
   "send_probability": 0.8,
   "cooldown_hours": 20,
   "priority": 3,

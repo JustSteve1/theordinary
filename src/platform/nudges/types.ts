@@ -7,6 +7,8 @@ export type NudgeDraft = {
   ruleVersion: number;
   kind: string;
   category: string;
+  /** health or mindset. Older rows are null. */
+  domain: string | null;
   trigger: string;
   triggerKey: string;
   decision: NudgeDecision;

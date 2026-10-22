@@ -294,7 +294,10 @@ export async function saveMood(formData: FormData) {
   const sessionId = uuid(field(formData, "session"));
   const mood = Number(field(formData, "mood"));
   if (sessionId) {
-    await saveSessionMood(profile.id, sessionId, mood);
+    const saved = await saveSessionMood(profile.id, sessionId, mood);
+    if (saved) {
+      await emitNudgeEvent({ type: "mood_saved", userId: profile.id, eventId: sessionId });
+    }
     redirect(`/checkin/done?session=${sessionId}`);
   }
   redirect("/home");

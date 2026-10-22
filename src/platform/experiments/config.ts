@@ -6,11 +6,20 @@ export type Outcome = {
   direction: "increase" | "decrease";
 };
 
+export const DOMAINS = ["health", "mindset"] as const;
+export type Domain = (typeof DOMAINS)[number];
+
+export function isDomain(value: unknown): value is Domain {
+  return typeof value === "string" && DOMAINS.includes(value as Domain);
+}
+
 export type ExperimentConfig = {
   id: string;
   version: number;
   title: string;
   hypothesis: string;
+  /** health: acts on WHOOP signals. mindset: acts on what Bee heard. Older drafts omit it. */
+  domain?: Domain;
   design: "micro_randomised_daily";
   decision_time_local: string;
   arms: [
@@ -35,6 +44,7 @@ export function validateExperiment(value: unknown): { ok: true; config: Experime
   if (row.hypothesis === "TODO" || typeof row.hypothesis !== "string" || !row.hypothesis) {
     errors.push("hypothesis");
   }
+  if (row.domain !== undefined && !isDomain(row.domain)) errors.push("domain");
   if (row.design !== "micro_randomised_daily") errors.push("design");
   if (typeof row.decision_time_local !== "string" || !/^\d{2}:\d{2}$/.test(row.decision_time_local)) {
     errors.push("decision_time_local");

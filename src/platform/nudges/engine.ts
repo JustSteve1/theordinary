@@ -81,6 +81,7 @@ export async function evaluate(event: NudgeEvent, deps: EngineDeps) {
       ruleVersion: rule.version,
       kind: rule.kind,
       category: rule.category,
+      domain: rule.domain,
       trigger: rule.trigger,
       triggerKey: event.triggerKey,
       decision: send ? "send" : "hold",

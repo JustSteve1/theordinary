@@ -251,6 +251,8 @@ create table if not exists nudges (
   constraint nudges_status check (status in ('held', 'pending', 'shown', 'dismissed', 'expired'))
 );
 
+alter table nudges add column if not exists domain text;
+
 create table if not exists nudge_settings (
   user_id uuid primary key references members (id) on delete cascade,
   enabled boolean not null default true,

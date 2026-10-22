@@ -1,0 +1,19 @@
+{
+  "id": "recovery-rebound",
+  "version": 1,
+  "kind": "reward",
+  "category": "recovery",
+  "domain": "health",
+  "trigger": "daily_morning",
+  "conditions": {
+    "all": [
+      { "metric": "whoop_recovery_vs_yesterday", "op": "gte", "value": 15 },
+      { "metric": "whoop_recovery_today", "op": "gte", "value": 50 }
+    ]
+  },
+  "message": { "key": "recovery_rebound", "params": ["whoop_recovery_vs_yesterday"] },
+  "send_probability": 0.8,
+  "cooldown_hours": 44,
+  "priority": 1,
+  "expires_after_hours": 36
+}

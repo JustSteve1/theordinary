@@ -11,8 +11,16 @@
     "title": "Well recovered",
     "body": "Recovery {whoop_recovery_today}% this morning. A good day to spend energy on something that matters to you."
   },
+  "recovery_rebound": {
+    "title": "Bounced back",
+    "body": "Recovery is up {whoop_recovery_vs_yesterday} points on yesterday. Whatever you did last night, your body noticed."
+  },
   "follow_through": {
     "title": "Follow-through",
     "body": "Done. That's {experiment_done_this_week} this week. Small steps, repeated, are how habits form."
+  },
+  "mood_lift": {
+    "title": "Good evening",
+    "body": "You rated tonight {mood_today} out of 5, above your recent evenings. Worth noticing what made the difference."
   }
 }

@@ -4,7 +4,7 @@ import { db, ready } from "@/src/platform/db";
 import type { NudgeRow, NudgeStatus, NudgeStore } from "@/src/platform/nudges/types";
 
 const COLUMNS = `
-  id::text, user_id::text, rule_id, rule_version, kind, category, trigger, trigger_key,
+  id::text, user_id::text, rule_id, rule_version, kind, category, domain, trigger, trigger_key,
   decision, probability, rand_u, message_key, params, priority, created_at, expires_at,
   status, shown_at, dismissed_at, helpful, channel
 `;
@@ -15,7 +15,7 @@ export function sqlStore(): NudgeStore {
       await ready();
       const rows = await db()`
         insert into nudges (
-          id, user_id, rule_id, rule_version, kind, category, trigger, trigger_key,
+          id, user_id, rule_id, rule_version, kind, category, domain, trigger, trigger_key,
           decision, probability, rand_u, message_key, params, priority,
           created_at, expires_at, status, channel
         )
@@ -26,6 +26,7 @@ export function sqlStore(): NudgeStore {
           ${draft.ruleVersion},
           ${draft.kind},
           ${draft.category},
+          ${draft.domain},
           ${draft.trigger},
           ${draft.triggerKey},
           ${draft.decision},
@@ -339,6 +340,7 @@ function mapRow(row: Record<string, unknown>): NudgeRow {
     ruleVersion: Number(row.rule_version ?? 0),
     kind: String(row.kind ?? ""),
     category: String(row.category ?? ""),
+    domain: row.domain ? String(row.domain) : null,
     trigger: String(row.trigger ?? ""),
     triggerKey: String(row.trigger_key),
     decision: row.decision === "hold" ? "hold" : "send",

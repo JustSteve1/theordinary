@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { readFileSync } from "node:fs";
 
+import { localFeatureIds } from "@/src/platform/experiments/activate";
+import { buildBeeAnchor } from "@/src/platform/experiments/anchor";
 import { validateExperiment, type ExperimentConfig } from "@/src/platform/experiments/config";
 import { experimentCardText, planDecision } from "@/src/platform/experiments/plan";
 import { randomise } from "@/src/platform/experiments/randomise";
@@ -82,6 +84,65 @@ test("validator rejects TODO and bad configs", () => {
   const probability = validateExperiment(validConfig({ treatment_probability: 0.95 }));
   assert.equal(probability.ok, false);
   assert.equal(validateExperiment(validConfig()).ok, true);
+});
+
+test("the health and mindset experiments activate, with a domain the validator checks", () => {
+  for (const [file, domain, whoop] of [
+    ["experiments/health-recovery-nudge.json", "health", true],
+    ["experiments/mindset-bee-nudge.json", "mindset", false],
+  ] as const) {
+    const raw = JSON.parse(readFileSync(file, "utf8"));
+    const parsed = validateExperiment(raw);
+    assert.equal(parsed.ok, true, file);
+    if (parsed.ok) {
+      assert.equal(parsed.config.domain, domain);
+      assert.equal(parsed.config.availability.requires_whoop_yesterday, whoop);
+      assert.equal(parsed.config.primary_outcome.feature_id, "recall.mood");
+      const ids = [parsed.config.primary_outcome, ...parsed.config.secondary_outcomes].map(
+        (item) => item.feature_id,
+      );
+      const known = new Set(localFeatureIds());
+      for (const id of ids) {
+        assert.ok(known.has(id), `${file}: ${id} is not in the feature registry`);
+      }
+      assert.ok(!JSON.stringify(raw).includes("TODO"), file);
+    }
+  }
+  const wrong = validateExperiment(validConfig({ domain: "sleep" as unknown as "health" }));
+  assert.equal(wrong.ok, false);
+  if (!wrong.ok) {
+    assert.ok(wrong.errors.includes("domain"));
+  }
+  assert.equal(validateExperiment(validConfig({ domain: "health" })).ok, true);
+});
+
+test("the Bee anchor names people and places from an already scored day, or clips one fact", () => {
+  const named = buildBeeAnchor("2026-10-20", [
+    {
+      factId: "f1",
+      kind: "event",
+      text: "Had biryani with Sam in Hackney after work",
+      entities: [
+        { name: "Sam", type: "person" },
+        { name: "Hackney", type: "place" },
+        { name: "Deliveroo", type: "organization" },
+      ],
+    },
+  ]);
+  assert.ok(named);
+  assert.match(named.line, /Sam and Hackney/);
+  assert.ok(!named.line.includes("Deliveroo"));
+  assert.ok(!named.line.includes("biryani"));
+
+  const clipped = buildBeeAnchor("2026-10-20", [
+    { factId: "f2", kind: "event", text: "x".repeat(200) },
+  ]);
+  assert.ok(clipped);
+  assert.ok(clipped.line.length < 140);
+  assert.ok(clipped.line.endsWith("…”"));
+
+  assert.equal(buildBeeAnchor(null, []), null);
+  assert.equal(buildBeeAnchor("2026-10-20", []), null);
 });
 
 test("decision plans are idempotent and unavailable days have no arm", () => {

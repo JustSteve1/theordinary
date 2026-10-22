@@ -1,13 +1,25 @@
 {
   "id": "follow-through",
   "version": 1,
-  "kind": "reinforcement",
+  "kind": "reward",
   "category": "experiments",
+  "domain": "mindset",
   "trigger": "experiment_done",
   "conditions": {
-    "all": [{ "metric": "experiment_done_this_week", "op": "gte", "value": 1 }]
+    "all": [
+      {
+        "metric": "experiment_done_this_week",
+        "op": "gte",
+        "value": 1
+      }
+    ]
   },
-  "message": { "key": "follow_through", "params": ["experiment_done_this_week"] },
+  "message": {
+    "key": "follow_through",
+    "params": [
+      "experiment_done_this_week"
+    ]
+  },
   "send_probability": 0.8,
   "cooldown_hours": 20,
   "priority": 2,

@@ -425,6 +425,7 @@ export function experimentWarehouseRow(row: Record<string, unknown>) {
     status: text(row.status),
     config_hash: text(row.config_hash),
     design: text(config.design),
+    domain: text(config.domain),
     schema_version: num(row.schema_version) ?? (typeof config.schema_version === "number" ? config.schema_version : 1),
     environment: text(row.environment) ?? (typeof config.environment === "string" ? config.environment : "production"),
     partner_id: text(partner.id),
@@ -480,6 +481,7 @@ export function appNudgeRow(row: Record<string, unknown>, member: string) {
     rule_version: finite(row.rule_version),
     kind: text(row.kind),
     category: text(row.category),
+    domain: text(row.domain),
     trigger: text(row.trigger),
     decision: text(row.decision),
     probability: finite(row.probability),
@@ -505,7 +507,7 @@ async function exportNudges(userId: string, member: string, since: string, full:
   const cursor = full ? null : (await readSync("app_nudges", userId))?.cursor;
   const from = cursor ?? since;
   const rows = await db()`
-    select id::text, rule_id, rule_version, kind, category, trigger, decision,
+    select id::text, rule_id, rule_version, kind, category, domain, trigger, decision,
            probability, rand_u, message_key, priority, created_at, expires_at,
            status, shown_at, dismissed_at, helpful, channel
     from nudges

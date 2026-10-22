@@ -11,6 +11,8 @@ const store = sqlStore();
 
 export type RenderedNudge = {
   id: string;
+  kind: string;
+  domain: string | null;
   title: string;
   message: string;
   when: string;
@@ -31,7 +33,11 @@ export function nudgesFlagEnabled() {
 }
 
 export async function emitNudgeEvent(
-  event: { type: "checkin_saved" | "experiment_done"; userId: string; eventId: string },
+  event: {
+    type: "checkin_saved" | "experiment_done" | "mood_saved";
+    userId: string;
+    eventId: string;
+  },
   override?: Partial<EngineDeps> & { now?: Date },
 ) {
   try {
@@ -169,6 +175,8 @@ async function present(current: NudgeStore, userId: string, rows: NudgeRow[], no
     }
     rendered.push({
       id: row.id,
+      kind: row.kind,
+      domain: row.domain,
       status: row.status === "pending" ? "shown" : row.status,
       createdAt: row.createdAt.toISOString(),
       ...view,

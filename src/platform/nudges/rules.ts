@@ -1,14 +1,21 @@
 import checkinStreak from "@/nudges/rules/checkin-streak.json";
 import followThrough from "@/nudges/rules/follow-through.json";
+import moodLift from "@/nudges/rules/mood-lift.json";
 import recoveryMorning from "@/nudges/rules/recovery-morning.json";
+import recoveryRebound from "@/nudges/rules/recovery-rebound.json";
 import richnessUp from "@/nudges/rules/richness-up.json";
 import bundledCopy from "@/nudges/copy/en.json";
+import { DOMAINS, isDomain, type Domain } from "@/src/platform/experiments/config";
 
 export const OPS = ["gte", "lte", "eq", "in", "between"] as const;
-export const TRIGGERS = ["checkin_saved", "experiment_done", "daily_morning"] as const;
+export const TRIGGERS = ["checkin_saved", "experiment_done", "daily_morning", "mood_saved"] as const;
+/** A reward fires after a positive change the member made; a nudge fires before. */
+export const KINDS = ["reinforcement", "reward"] as const;
+export { DOMAINS };
 
 export type Op = (typeof OPS)[number];
 export type Trigger = (typeof TRIGGERS)[number];
+export type Kind = (typeof KINDS)[number];
 
 export type Comparison = {
   metric: string;
@@ -21,8 +28,11 @@ export type Condition = { all: Condition[] } | { any: Condition[] } | Comparison
 export type NudgeRule = {
   id: string;
   version: number;
-  kind: string;
+  kind: Kind;
+  /** Per-day slot. At most one send per category per London day. */
   category: string;
+  /** health acts on WHOOP signals; mindset acts on what Bee heard or the member said. */
+  domain: Domain;
   trigger: Trigger;
   conditions: Condition;
   message: { key: string; params: string[] };
@@ -47,7 +57,14 @@ let cachedCopy: CopyBook | undefined;
 export function loadRules(): NudgeRule[] {
   if (!cachedRules) {
     const copy = loadCopy();
-    cachedRules = [checkinStreak, richnessUp, recoveryMorning, followThrough].map((raw) => {
+    cachedRules = [
+      checkinStreak,
+      richnessUp,
+      recoveryMorning,
+      recoveryRebound,
+      followThrough,
+      moodLift,
+    ].map((raw) => {
       const result = validateRule(raw, copy);
       if (!result.ok) {
         const id = raw && typeof raw === "object" && "id" in raw ? String(raw.id) : "rule";
@@ -127,13 +144,17 @@ export function validateRule(
   if (version === null || version < 1) {
     errors.push("version");
   }
-  const kind = text(raw.kind);
-  if (!kind) {
+  const kind = raw.kind;
+  if (!isKind(kind)) {
     errors.push("kind");
   }
   const category = text(raw.category);
   if (!category) {
     errors.push("category");
+  }
+  const domain = raw.domain;
+  if (!isDomain(domain)) {
+    errors.push("domain");
   }
   const trigger = raw.trigger;
   if (!isTrigger(trigger)) {
@@ -198,8 +219,9 @@ export function validateRule(
     !isTrigger(trigger) ||
     version === null ||
     priority === null ||
-    !kind ||
+    !isKind(kind) ||
     !category ||
+    !isDomain(domain) ||
     !params ||
     typeof probability !== "number" ||
     typeof cooldown !== "number" ||
@@ -214,6 +236,7 @@ export function validateRule(
       version,
       kind,
       category,
+      domain,
       trigger,
       conditions: conditions.condition,
       message: { key: messageKey, params: params as string[] },
@@ -370,4 +393,8 @@ function text(value: unknown): string | null {
 
 function isTrigger(value: unknown): value is Trigger {
   return typeof value === "string" && TRIGGERS.includes(value as Trigger);
+}
+
+function isKind(value: unknown): value is Kind {
+  return typeof value === "string" && KINDS.includes(value as Kind);
 }

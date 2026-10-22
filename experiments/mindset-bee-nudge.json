@@ -1,0 +1,35 @@
+{
+  "id": "mindset-bee-nudge",
+  "version": 1,
+  "status": "draft",
+  "title": "Retell one moment Bee heard",
+  "domain": "mindset",
+  "hypothesis": "A prompt to retell one moment from yesterday that Bee heard, before the evening check-in, lifts same-evening mood and check-in richness compared with days without the prompt.",
+  "design": "micro_randomised_daily",
+  "decision_time_local": "08:00",
+  "arms": [
+    { "name": "control", "instruction": null },
+    {
+      "name": "treatment",
+      "instruction": "Sometime today, tell someone about one moment from yesterday. The card below names who or what Bee heard, to get you started. Mark Done tonight if you did."
+    }
+  ],
+  "treatment_probability": 0.5,
+  "availability": {
+    "requires_whoop_yesterday": false,
+    "skip_dates": []
+  },
+  "primary_outcome": {
+    "feature_id": "recall.mood",
+    "offset_days": 0,
+    "direction": "increase"
+  },
+  "secondary_outcomes": [
+    { "feature_id": "recall.richness", "offset_days": 0, "direction": "increase" },
+    { "feature_id": "recall.accuracy", "offset_days": 0, "direction": "increase" },
+    { "feature_id": "bee.conversation_minutes", "offset_days": 0, "direction": "increase" }
+  ],
+  "min_days": 28,
+  "max_days": 70,
+  "notes": "Mindset domain. The anchor shown under the card is rendered from the member's latest Bee snapshot in Neon at page time. Bee text is never stored on the decision and never leaves Neon."
+}

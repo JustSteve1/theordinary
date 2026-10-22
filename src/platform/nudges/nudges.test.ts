@@ -31,7 +31,8 @@ import {
 } from "@/src/platform/nudges/rules";
 import { checkinStreakDays, richnessMetrics } from "@/src/platform/nudges/signals/checkins";
 import { experimentMetrics } from "@/src/platform/nudges/signals/experiments";
-import { recoveryMetric } from "@/src/platform/nudges/signals/whoop";
+import { moodMetrics } from "@/src/platform/nudges/signals/mood";
+import { recoveryChangeMetric, recoveryMetric } from "@/src/platform/nudges/signals/whoop";
 import { memoryStore, numericParams, type MemoryStore } from "@/src/platform/nudges/store";
 import { londonIsoWeek, londonMidnight } from "@/src/platform/nudges/time";
 import type { NudgeDraft } from "@/src/platform/nudges/types";
@@ -44,6 +45,7 @@ function baseRule(patch: Record<string, unknown> = {}) {
     version: 1,
     kind: "reinforcement",
     category: "consistency",
+    domain: "mindset",
     trigger: "checkin_saved",
     conditions: { all: [{ metric: "checkin_streak_days", op: "gte", value: 1 }] },
     message: { key: "streak", params: ["checkin_streak_days"] },
@@ -55,11 +57,18 @@ function baseRule(patch: Record<string, unknown> = {}) {
   };
 }
 
-test("the four starter rules validate", () => {
+test("the starter rules validate, each with a domain and a kind", () => {
   const rules = loadRules();
   assert.deepEqual(
     rules.map((rule) => rule.id).sort(),
-    ["checkin-streak", "follow-through", "recovery-morning", "richness-up"],
+    [
+      "checkin-streak",
+      "follow-through",
+      "mood-lift",
+      "recovery-morning",
+      "recovery-rebound",
+      "richness-up",
+    ],
   );
   const streak = rules.find((rule) => rule.id === "checkin-streak");
   assert.equal(streak?.trigger, "checkin_saved");
@@ -68,6 +77,40 @@ test("the four starter rules validate", () => {
   assert.equal(copy.richness_up.title, "Rich recall");
   assert.equal(copy.recovery_high.title, "Well recovered");
   assert.equal(copy.follow_through.title, "Follow-through");
+  assert.equal(copy.recovery_rebound.title, "Bounced back");
+  assert.equal(copy.mood_lift.title, "Good evening");
+
+  for (const item of rules) {
+    assert.ok(["health", "mindset"].includes(item.domain), item.id);
+    assert.ok(["reinforcement", "reward"].includes(item.kind), item.id);
+  }
+  const byId = Object.fromEntries(rules.map((item) => [item.id, item]));
+  assert.equal(byId["recovery-morning"].domain, "health");
+  assert.equal(byId["recovery-rebound"].domain, "health");
+  assert.equal(byId["recovery-rebound"].kind, "reward");
+  assert.equal(byId["mood-lift"].domain, "mindset");
+  assert.equal(byId["mood-lift"].kind, "reward");
+  assert.equal(byId["mood-lift"].trigger, "mood_saved");
+  assert.equal(byId["follow-through"].kind, "reward");
+  assert.equal(byId["checkin-streak"].kind, "reinforcement");
+});
+
+test("a rule without a domain, with a bad domain, or with a bad kind fails", () => {
+  const noDomain = { ...baseRule() } as Record<string, unknown>;
+  delete noDomain.domain;
+  const missing = validateRule(noDomain, copy);
+  assert.equal(missing.ok, false);
+  if (!missing.ok) {
+    assert.ok(missing.errors.includes("domain"));
+  }
+  const wrong = validateRule(baseRule({ domain: "sleep" }), copy);
+  assert.equal(wrong.ok, false);
+  const badKind = validateRule(baseRule({ kind: "prize" }), copy);
+  assert.equal(badKind.ok, false);
+  if (!badKind.ok) {
+    assert.ok(badKind.errors.includes("kind"));
+  }
+  assert.equal(validateRule(baseRule({ kind: "reward", domain: "health" }), copy).ok, true);
 });
 
 test("a bad op, missing copy, unknown placeholder, probability, and trigger fail", () => {
@@ -166,6 +209,7 @@ function draft(patch: Partial<NudgeDraft> = {}): NudgeDraft {
     ruleVersion: 1,
     kind: "reinforcement",
     category: "consistency",
+    domain: "mindset",
     trigger: "checkin_saved",
     triggerKey: "event-1",
     decision: "send",
@@ -260,6 +304,7 @@ function rule(patch: Partial<NudgeRule> = {}): NudgeRule {
     version: 1,
     kind: "reinforcement",
     category: "consistency",
+    domain: "mindset",
     trigger: "checkin_saved",
     conditions: { all: [{ metric: "checkin_streak_days", op: "gte", value: 1 }] },
     message: { key: "streak", params: ["checkin_streak_days"] },
@@ -303,6 +348,31 @@ test("signals read fixtures, including a streak across London midnight", () => {
     {},
   );
   assert.deepEqual(recoveryMetric({ status: "ok", value: null, atMs: now, now }), {});
+
+  const today = { whoop_recovery_today: 72 };
+  const hour = 60 * 60 * 1000;
+  assert.deepEqual(
+    recoveryChangeMetric(
+      today,
+      [
+        { value: 72, atMs: now - hour },
+        { value: 51.4, atMs: now - 25 * hour },
+        { value: 30, atMs: now - 49 * hour },
+      ],
+      now,
+    ),
+    { whoop_recovery_vs_yesterday: 21 },
+  );
+  assert.deepEqual(recoveryChangeMetric(today, [{ value: 72, atMs: now - hour }], now), {});
+  assert.deepEqual(recoveryChangeMetric({}, [{ value: 50, atMs: now - 25 * hour }], now), {});
+
+  assert.deepEqual(moodMetrics([{ mood: 5 }, { mood: 3 }, { mood: 4 }, { mood: null }, { mood: 3 }]), {
+    mood_today: 5,
+    recent_moods: 3,
+    mood_vs_recent: 1.7,
+  });
+  assert.deepEqual(moodMetrics([{ mood: 4 }]), { mood_today: 4, recent_moods: 0 });
+  assert.deepEqual(moodMetrics([{ mood: null }]), {});
 
   const week = londonIsoWeek(new Date("2026-10-22T12:00:00Z"));
   assert.equal(dateKey(week.start.getTime()), "2026-10-19");
@@ -469,6 +539,47 @@ test("the morning run writes a recovery nudge when recovery is high", async () =
   assert.equal(store.rows[0].status, "pending");
 });
 
+test("a mood tap above recent evenings writes a mindset reward", async () => {
+  const store = memoryStore();
+  const now = new Date("2026-10-22T21:30:00.000Z");
+  const moodRule = loadRules().find((item) => item.id === "mood-lift");
+  assert.ok(moodRule);
+  const rules = [{ ...moodRule, send_probability: 1 }];
+  const metrics = async () => ({ mood_today: 5, mood_vs_recent: 1.2, recent_moods: 4 });
+  assert.equal(
+    await evaluate(
+      { type: "mood_saved", userId: "member-a", triggerKey: "session-1", now },
+      { store, flag: true, salt, rules, metrics },
+    ),
+    1,
+  );
+  const [row] = store.rows;
+  assert.equal(row.kind, "reward");
+  assert.equal(row.domain, "mindset");
+  assert.equal(row.trigger, "mood_saved");
+  assert.deepEqual(row.params, { mood_today: 5 });
+  const [shown] = await activeNudges("member-a", 1, { store, flag: true, now });
+  assert.equal(shown.kind, "reward");
+  assert.equal(shown.domain, "mindset");
+  assert.equal(shown.title, "Good evening");
+  assert.match(shown.message, /5 out of 5/);
+
+  const flat = memoryStore();
+  assert.equal(
+    await evaluate(
+      { type: "mood_saved", userId: "member-a", triggerKey: "session-2", now },
+      {
+        store: flat,
+        flag: true,
+        salt,
+        rules,
+        metrics: async () => ({ mood_today: 3, mood_vs_recent: 0, recent_moods: 4 }),
+      },
+    ),
+    0,
+  );
+});
+
 test("buttons set status and helpful, and a closed gate shows nothing", async () => {
   const now = new Date("2026-10-22T08:30:00.000Z");
   const store = memoryStore();
@@ -553,6 +664,7 @@ test("exported nudges are numbers and rule ids, and a withdrawn member is skippe
         rule_version: 1,
         kind: "reinforcement",
         category: "consistency",
+        domain: "mindset",
         trigger: "checkin_saved",
         decision: "hold",
         probability: 0.8,
@@ -576,6 +688,7 @@ test("exported nudges are numbers and rule ids, and a withdrawn member is skippe
     assert.equal(JSON.stringify(row).includes(sentence), false);
     assert.equal(JSON.stringify(row).includes("checkin_streak_days"), false);
     assert.equal(row.decision, "hold");
+    assert.equal(row.domain, "mindset");
     assert.equal(row.probability, 0.8);
     assert.ok(row.nudge_id.startsWith("n_"));
     assert.doesNotThrow(() => assertNoSpeech("app_nudges", [row]));
