@@ -22,16 +22,20 @@ flowchart LR
   feat --> effects
 ```
 
-London times:
+Schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes (clocks go back at 01:00 UTC). Until that morning London is one hour ahead. Vercel Hobby may start a cron any time in the 59 minutes after the minute in the file. The earliest start is that minute, so each minute sits after the job before it has finished.
 
-| Time | Job |
-| --- | --- |
-| 02:30 | `/api/cron/whoop-sync` reads the last 3 days of WHOOP for consented, connected members |
-| 03:00 | `/api/cron/warehouse-export` exports scores, consents, confounders, and Bee metadata |
-| 04:00 | GitHub Actions runs Dataform. The synthetic effect test runs before production effects |
-| 05:00 | `/api/cron/experiments-decide` writes today's decision for each active experiment |
+| UTC | London before 25 Oct | London from 25 Oct | Job |
+| --- | --- | --- | --- |
+| 06:45 | 07:45 | 06:45 | `/api/cron/whoop-sync` reads the last 3 days of WHOOP for consented, connected members. Latest start 07:44 UTC, finished by 07:49 UTC with the 5 minute function cap |
+| 07:15 | 08:15 | 07:15 | `/api/cron/experiments-decide` writes today's decision for each active experiment. It does not read BigQuery |
+| 08:15 | 09:15 | 08:15 | `/api/cron/warehouse-export` exports scores, consents, confounders, and Bee metadata. Earliest start is 26 minutes after WHOOP's latest finish |
+| 09:40 and 11:40 | 10:40 and 12:40 | 09:40 and 11:40 | GitHub Actions runs Dataform. The first chance is 21 minutes after the export's latest finish. The synthetic effect test runs before production effects. The second run is safe because Dataform rebuilds core, features, and effects from scratch |
 
-Vercel sends `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules (100 cron jobs per project), so the three routes stay separate.
+Vercel sends `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules (100 cron jobs per project), so the three routes stay separate. Neither Dataform minute is minute 0.
+
+The Warehouse workflow writes `warehouse/dataform/.df-credentials.json` after Workload Identity auth, with only the project id and `europe-west2`. Application Default Credentials come from that auth step. The file is gitignored. It is not a service-account key.
+
+A WHOOP refresh locks that member's connection row and reads it again before calling WHOOP. A token that already expires more than a minute ahead is reused. WHOOP `invalid_grant` on the refresh token that was sent deletes the row. If the stored refresh token has changed, the new row stays. A 429, a 5xx, a network error, or an incomplete body keeps the row, stores a retryable `last_error`, and leaves `last_success_at` in place. The disconnect switch and `POST /api/whoop/disconnect` are the only deliberate revoke.
 
 ## Local landing with Kedro
 
@@ -46,9 +50,9 @@ kedro run --env=prod --pipelines=land_user1
 kedro run --env=prod --pipelines=sample_raw
 ```
 
-`land_user1` syncs that member's WHOOP window (30 days unless `days` is changed) and then runs the same export the 03:00 cron runs. `sample_raw` reads at most 100 rows from each WHOOP and Bee raw table, leaves out the payload column, and writes `data/08_reporting/`. A plain `kedro run` cannot select the prod catalog.
+`land_user1` syncs that member's WHOOP window (30 days unless `days` is changed) and then runs the same export the 08:15 UTC cron runs. `sample_raw` reads at most 100 rows from each WHOOP and Bee raw table, leaves out the payload column, and writes `data/08_reporting/`. A plain `kedro run` cannot select the prod catalog.
 
-The scheduled path still needs this branch deployed. Production crons run on theordinary.club, and the 04:00 Dataform job runs from `main`. After raw rows exist, Dataform can also be run once locally by impersonating `ordinary-dataform` if you want feature tables before that schedule exists.
+The scheduled path still needs this branch deployed. Production crons run on theordinary.club, and the 09:40 and 11:40 UTC Dataform jobs run from `main`. After raw rows exist, Dataform can also be run once locally by impersonating `ordinary-dataform` if you want feature tables before that schedule exists.
 
 ## Re-run a night
 

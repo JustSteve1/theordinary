@@ -5,7 +5,9 @@ import {
   deleteConnection,
   getConnection,
   saveConnection,
+  withWhoopConnectionLock,
   type Connection,
+  type WhoopConnectionTx,
 } from "@/src/platform/integrations/store";
 
 const TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token";
@@ -40,7 +42,37 @@ export type WhoopReading = WhoopScore & {
   kind: "Recovery" | "Sleep" | "Strain";
 };
 
-const refreshInflight = new Map<string, Promise<Connection | null>>();
+const refreshInflight = new Map<string, Promise<WhoopTokenResult>>();
+
+export type WhoopTokenResult =
+  | { ok: true; accessToken: string }
+  | { ok: false; reason: "reconnect" | "temporary"; message: string };
+
+const RECONNECT_MESSAGE = "WHOOP needs to be connected again.";
+const TEMPORARY_REFRESH_MESSAGE =
+  "WHOOP could not be refreshed. The connection is still saved.";
+
+type TokenFetch = (url: string, init?: RequestInit) => Promise<Response>;
+
+export type WhoopRefreshDeps = {
+  fetchImpl?: TokenFetch;
+  now?: () => number;
+  config?: WhoopConfig | null;
+  lock?: <T>(
+    userId: string,
+    run: (current: Connection | null, tx: WhoopConnectionTx) => Promise<T>,
+  ) => Promise<T>;
+};
+
+class WhoopTokenError extends Error {
+  readonly kind: "invalid_grant" | "transient";
+
+  constructor(message: string, kind: "invalid_grant" | "transient") {
+    super(message);
+    this.name = "WhoopTokenError";
+    this.kind = kind;
+  }
+}
 
 function whoopEnv() {
   return {
@@ -111,11 +143,15 @@ export async function connectWhoop(input: { userId: string; code: string }) {
     throw new Error("WHOOP is not configured.");
   }
 
-  const token = await requestToken(config, {
-    grant_type: "authorization_code",
-    code: input.code,
-    redirect_uri: config.redirectUri,
-  });
+  const token = await requestToken(
+    config,
+    {
+      grant_type: "authorization_code",
+      code: input.code,
+      redirect_uri: config.redirectUri,
+    },
+    fetch,
+  );
   const profile = await whoopFetch<Record<string, unknown>>(
     token.access_token,
     "/v2/user/profile/basic",
@@ -180,17 +216,26 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
 
   try {
     const accessToken = await accessTokenFor(connection);
-    if (!accessToken) {
-      return blankWhoop("disconnected", "WHOOP needs to be connected again.");
+    if (!accessToken.ok) {
+      if (accessToken.reason === "reconnect") {
+        return blankWhoop("disconnected", RECONNECT_MESSAGE);
+      }
+      return blankWhoop("error", accessToken.message);
     }
 
     const [recovery, sleep, cycles] = await Promise.all([
-      whoopFetch<{ records?: unknown[] }>(accessToken, "/v2/recovery?limit=10"),
       whoopFetch<{ records?: unknown[] }>(
-        accessToken,
+        accessToken.accessToken,
+        "/v2/recovery?limit=10",
+      ),
+      whoopFetch<{ records?: unknown[] }>(
+        accessToken.accessToken,
         "/v2/activity/sleep?limit=10",
       ),
-      whoopFetch<{ records?: unknown[] }>(accessToken, "/v2/cycle?limit=10"),
+      whoopFetch<{ records?: unknown[] }>(
+        accessToken.accessToken,
+        "/v2/cycle?limit=10",
+      ),
     ]);
 
     const recent = [
@@ -216,51 +261,109 @@ export async function loadWhoop(userId: string): Promise<WhoopSnapshot> {
   }
 }
 
-export async function accessTokenFor(connection: Connection) {
-  if (connection.expiresAt > Date.now() + 60_000) {
-    return connection.accessToken;
+export async function accessTokenFor(
+  connection: Connection,
+  deps: WhoopRefreshDeps = {},
+): Promise<WhoopTokenResult> {
+  const now = deps.now ?? Date.now;
+  if (connection.expiresAt > now() + 60_000) {
+    return { ok: true, accessToken: connection.accessToken };
   }
 
   const existing = refreshInflight.get(connection.userId);
   if (existing) {
-    const refreshed = await existing;
-    return refreshed?.accessToken ?? null;
+    return existing;
   }
 
-  const pending = refreshConnection(connection).finally(() => {
+  const pending = refreshWhoopConnection(connection, deps).finally(() => {
     refreshInflight.delete(connection.userId);
   });
   refreshInflight.set(connection.userId, pending);
-  const refreshed = await pending;
-  return refreshed?.accessToken ?? null;
+  return pending;
 }
 
-async function refreshConnection(
+export async function refreshWhoopConnection(
   connection: Connection,
-): Promise<Connection | null> {
-  const config = await whoopAppConfig(connection.userId);
+  deps: WhoopRefreshDeps = {},
+): Promise<WhoopTokenResult> {
+  const config =
+    deps.config === undefined
+      ? await whoopAppConfig(connection.userId)
+      : deps.config;
   if (!config) {
-    return null;
+    return { ok: false, reason: "temporary", message: "WHOOP is not configured." };
   }
 
+  const now = deps.now ?? Date.now;
+  const lock = deps.lock ?? withWhoopConnectionLock;
   try {
-    const token = await requestToken(config, {
-      grant_type: "refresh_token",
-      refresh_token: connection.refreshToken,
-      scope: "offline",
-    });
+    return await lock(connection.userId, (current, tx) =>
+      refreshLocked(current, tx, config, deps.fetchImpl ?? fetch, now),
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "temporary",
+      message: error instanceof Error ? error.message : TEMPORARY_REFRESH_MESSAGE,
+    };
+  }
+}
+
+async function refreshLocked(
+  current: Connection | null,
+  tx: WhoopConnectionTx,
+  config: WhoopConfig,
+  fetchImpl: TokenFetch,
+  now: () => number,
+): Promise<WhoopTokenResult> {
+  if (!current) {
+    return { ok: false, reason: "reconnect", message: RECONNECT_MESSAGE };
+  }
+  if (current.expiresAt > now() + 60_000) {
+    return { ok: true, accessToken: current.accessToken };
+  }
+
+  const sentRefreshToken = current.refreshToken;
+  try {
+    const token = await requestToken(
+      config,
+      {
+        grant_type: "refresh_token",
+        refresh_token: sentRefreshToken,
+        scope: "offline",
+      },
+      fetchImpl,
+    );
     const next: Connection = {
-      ...connection,
-      scopes: token.scope || connection.scopes,
+      ...current,
+      scopes: token.scope || current.scopes,
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
-      expiresAt: Date.now() + token.expires_in * 1000,
+      expiresAt: now() + token.expires_in * 1000,
     };
-    await saveConnection(next);
-    return next;
-  } catch {
-    await deleteConnection(connection.userId, "whoop");
-    return null;
+    await tx.save(next);
+    return { ok: true, accessToken: next.accessToken };
+  } catch (error) {
+    if (error instanceof WhoopTokenError && error.kind === "invalid_grant") {
+      const latest = await tx.reread();
+      if (latest && latest.refreshToken !== sentRefreshToken) {
+        if (latest.expiresAt > now() + 60_000) {
+          return { ok: true, accessToken: latest.accessToken };
+        }
+        return {
+          ok: false,
+          reason: "temporary",
+          message: TEMPORARY_REFRESH_MESSAGE,
+        };
+      }
+      await tx.remove();
+      return { ok: false, reason: "reconnect", message: RECONNECT_MESSAGE };
+    }
+    return {
+      ok: false,
+      reason: "temporary",
+      message: error instanceof Error ? error.message : TEMPORARY_REFRESH_MESSAGE,
+    };
   }
 }
 
@@ -274,30 +377,63 @@ type TokenResponse = {
 async function requestToken(
   config: WhoopConfig,
   fields: Record<string, string>,
+  fetchImpl: TokenFetch,
 ): Promise<TokenResponse> {
   const body = new URLSearchParams({
     client_id: config.clientId,
     client_secret: config.clientSecret,
     ...fields,
   });
-  const response = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error(`WHOOP token request failed (${response.status}).`);
+  let response: Response;
+  try {
+    response = await fetchImpl(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new WhoopTokenError(
+      error instanceof Error ? error.message : "WHOOP token request failed.",
+      "transient",
+    );
   }
-  const token = (await response.json()) as Partial<TokenResponse>;
+  if (!response.ok) {
+    const errorCode = await tokenErrorCode(response);
+    if (errorCode === "invalid_grant") {
+      throw new WhoopTokenError(
+        `WHOOP token request failed (${response.status}, invalid_grant).`,
+        "invalid_grant",
+      );
+    }
+    throw new WhoopTokenError(
+      `WHOOP token request failed (${response.status}).`,
+      "transient",
+    );
+  }
+  let token: Partial<TokenResponse>;
+  try {
+    token = (await response.json()) as Partial<TokenResponse>;
+  } catch {
+    throw new WhoopTokenError("WHOOP returned an incomplete token.", "transient");
+  }
   if (
     typeof token.access_token !== "string" ||
     typeof token.refresh_token !== "string" ||
     typeof token.expires_in !== "number"
   ) {
-    throw new Error("WHOOP returned an incomplete token.");
+    throw new WhoopTokenError("WHOOP returned an incomplete token.", "transient");
   }
   return token as TokenResponse;
+}
+
+async function tokenErrorCode(response: Response) {
+  try {
+    const body = (await response.json()) as { error?: unknown };
+    return typeof body.error === "string" ? body.error : "";
+  } catch {
+    return "";
+  }
 }
 
 async function whoopFetch<T>(accessToken: string, path: string): Promise<T> {
