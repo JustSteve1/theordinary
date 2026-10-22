@@ -38,7 +38,7 @@ docs/recall/                 Screen pack and journey map
 
 **Accounts.** Sign-up, terms, email verify, login, password reset. Accounts stay pending until the verify link is opened. Health-data consent is a separate onboarding step and is required before a check-in is stored.
 
-**Voice check-in.** Home starts a talk. Capture is browser speech recognition, with work to keep Safari on iPhone listening and to keep the last words when the recogniser restarts. The spoken text is stored as `talk_text`. Follow-up turns are stored with the talk. Probe yes/no answers are stored on the check-in row, not in the chat transcript.
+**Voice check-in.** Home starts a talk; the copy frames it as an evening ritual, three minutes about yesterday. At wrap-up one tap records mood (1 low to 5 great) on `recall_sessions.mood`. Mood is an outcome, exported as the `recall.mood` feature, and never a scoring input. Capture is browser speech recognition, with work to keep Safari on iPhone listening and to keep the last words when the recogniser restarts. The spoken text is stored as `talk_text`. Follow-up turns are stored with the talk. Probe yes/no answers are stored on the check-in row, not in the chat transcript.
 
 **Scoring.** Two independent metrics (Accuracy and Richness) from a config-driven lexical pipeline. v1 of the matcher is frozen and still written on every check-in so later scorers can be compared. v2 reads [`skills/episodic-recall/scoring.config.v2.json`](skills/episodic-recall/scoring.config.v2.json). The JSON is hashed into each run; a config change produces new `score_runs` without rewriting the talk. The first three non-empty check-ins are marked practice and stay off the trend. A yes/no probe round can run after free recall. A semantic matcher exists behind a flag and is off. Weights for a 3.0.0 scorer are proposed only when reliability gates in the config pass.
 
@@ -50,7 +50,11 @@ docs/recall/                 Screen pack and journey map
 
 **Bee recordings.** Conversations and journals are read into the member snapshot. After a check-in saves, the spoken text is posted back (journal, then conversation, then a confirmed fact — first path that works is locked for the account). Scores, probes, and scoring artifacts stay here. Echoes tagged `Check-in from The Ordinary` are stripped before scoring and chat.
 
-**Nudges.** In-app notes that reinforce a check-in streak, a richer recall, a high-recovery morning, or an experiment marked done. Each matching rule is sent with probability 0.8 or held, and both outcomes are stored. Home and `/app/nudges` show sends only. `NUDGES_ENABLED` defaults off. Rules and copy live in [`nudges/`](nudges). The module notes are in [`src/platform/nudges/README.md`](src/platform/nudges/README.md).
+**Nudges and rewards.** In-app notes, each tagged with a `domain` (`health` from WHOOP signals, `mindset` from check-in and Bee signals) and a `kind` (`reinforcement` or `reward`). Reinforcements mark a check-in streak, a high-recovery morning, or an experiment marked done. Rewards mark a richer recall, a recovery that rebounded on yesterday, and an evening mood above the member's recent evenings. Each matching rule is sent with probability 0.8 or held, and both outcomes are stored. Home and `/app/nudges` show sends only, on one shared day card. `NUDGES_ENABLED` defaults off. Rules and copy live in [`nudges/`](nudges). The module notes are in [`src/platform/nudges/README.md`](src/platform/nudges/README.md).
+
+**Experiments.** [`experiments/health-recovery-nudge.json`](experiments/health-recovery-nudge.json) and [`experiments/mindset-bee-nudge.json`](experiments/mindset-bee-nudge.json) are daily micro-randomised trials, one per domain, with `recall.mood` as the primary outcome. Each morning `experiments-decide` writes an arm per enrolled member; Home shows the instruction on the day card with Done and Skipped. A mindset treatment adds a one-line Bee anchor built from the already-scored latest check-in (entity names, never yesterday's answer key), rendered at request time and never stored or exported. `first-experiment.json` stays a `TODO` draft.
+
+**Baseline.** The Chronos-2 Cloud Run job forecasts each member's next week of Accuracy and Richness from their history. After the forecast assertions pass, the Warehouse workflow calls `/api/cron/baseline-snapshot`, which copies the newest run into Neon `baseline_snapshots`. Home's "Your baseline" card draws the q10 to q90 band under the actual line from that Neon row; no page reads BigQuery.
 
 ## Engineering decisions
 
@@ -80,11 +84,11 @@ docs/recall/                 Screen pack and journey map
 
 Analysis lives in BigQuery in London (`europe-west2`, project `the-ordinary-512212`). Neon stays the source of truth. Pages do not read BigQuery. Speech, names, emails, and member UUIDs stay out of the warehouse. Members are `member_key`, an HMAC of the account id. The runbook is [`docs/warehouse/RUNBOOK.md`](docs/warehouse/RUNBOOK.md). The feature list is [`docs/warehouse/features.md`](docs/warehouse/features.md).
 
-Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, morning nudges are 07:30 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC. Vercel calls the four cron routes with `Authorization: Bearer $CRON_SECRET`. Hobby and Pro both allow these once-a-day schedules, so they stay as four routes. The warehouse routes return quietly when the warehouse env vars are missing.
+Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, morning nudges are 07:30 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC (spine, studies, effects_test, effects, then the Chronos-2 job, the forecast assertions, and the baseline snapshot when `FORECAST_JOB_ENABLED` is on). Vercel calls the four cron routes with `Authorization: Bearer $CRON_SECRET`; the workflow calls `/api/cron/baseline-snapshot` with the same secret. Hobby and Pro both allow these once-a-day schedules, so they stay as four routes. A cron that does nothing answers `{ "skipped": true, "reason": "..." }` so a quiet morning is explained, not silent.
 
 Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials. A Kedro project at [`warehouse/kedro`](warehouse/kedro) is the local catalog: a plain run stays off BigQuery, and `--env=prod --pipelines=land_user1` is what writes raw rows before this is deployed.
 
-New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`, `NUDGES_ENABLED`, `NUDGE_SALT`. `WAREHOUSE_IMPERSONATE` is local only.
+New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`, `BQ_LOCATION`, `MEMBER_KEY_SECRET`, `CRON_SECRET`, `EXPERIMENT_SALT`, `NUDGES_ENABLED`, `NUDGE_SALT`. `WAREHOUSE_IMPERSONATE` is local only. GitHub repository variables: `FORECAST_JOB_ENABLED` (`true` once the `ordinary-forecast` Cloud Run job exists) and `APP_URL` (`https://theordinary.club`); repository secret `CRON_SECRET` matches Vercel's.
 
 ## Routes
 
@@ -111,13 +115,15 @@ New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL
 | WHOOP webhook | `/api/whoop/webhook` |
 | Nightly warehouse | `/api/cron/whoop-sync`, `/api/cron/warehouse-export`, `/api/cron/experiments-decide` |
 | Morning nudges | `/api/cron/nudges-morning` |
+| Baseline snapshot (called by the Warehouse workflow) | `/api/cron/baseline-snapshot` |
 | Hackathon demo | `/demo` |
 
 ## Data the scoring path cares about
 
 - `checkins` — frozen talk and scoring inputs
 - `score_runs` — v1.0.0 and 2.0.0 payloads
-- `recall_sessions` / `recall_talks` — trend row plus narrative (narrative is not copied into `log_session`)
+- `recall_sessions` / `recall_talks` — trend row plus narrative (narrative is not copied into `log_session`); `mood` and `mood_at` hold the wrap-up tap
+- `baseline_snapshots` — the newest Chronos-2 run per member, copied from BigQuery for the Home card
 - `integration_secrets` — Bee token, WHOOP app credentials, locked Bee export kind
 - `connections` — WHOOP OAuth tokens
 
@@ -145,8 +151,9 @@ pnpm test:scoring
 pnpm test:warehouse
 pnpm test:nudges
 pnpm warehouse:status
-pnpm experiments:activate first-experiment
-pnpm experiments:end first-experiment
+pnpm experiments:activate health-recovery-nudge
+pnpm experiments:activate mindset-bee-nudge
+pnpm experiments:end health-recovery-nudge
 pnpm partner:sample-file barbara-dry-run
 pnpm partner:import barbara-dry-run tmp/partner-barbara-dry-run.csv
 pnpm forecast:run
@@ -156,15 +163,15 @@ pytest warehouse/forecast
 
 `pnpm test:scoring` runs the v2 scoring cases (including Tests A/B/C) and the Bee export firewall (payload is talk text only; Ordinary-tagged echoes are dropped; a successful export is not posted twice).
 
-`pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser, the v2 monitoring protocol, partner-import validation, the demo access rule, the demo baseline band (inside/compared counts, each segment's rendering, older snapshots without bands), and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail. It does not pretend the warehouse is connected when the env vars are missing.
+`pnpm test:warehouse` checks the speech firewall, WHOOP paging and webhook signature, the experiment randomiser and the health and mindset definitions, the Bee anchor, the v2 monitoring protocol, partner-import validation, the demo access rule, the baseline band and the Home baseline snapshot (payload build, no speech, the workflow step order), and the effect estimator on synthetic data. `pnpm warehouse:status` prints pass, warn, or fail for the London readiness view, the Chronos-2 run age, exported nudges and decision points, active experiments by domain, the Neon baseline snapshot, and each sync stream. It does not pretend the warehouse is connected when the env vars are missing.
 
 ## Hackathon MVP
 
-A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The BARBARA marker brief is [`docs/warehouse/BARBARA-BRIEF.md`](docs/warehouse/BARBARA-BRIEF.md). The Spotify file under `experiments/concepts/` is display-only; Chronos is parked for that concept only.
+One flow on the `mvp1` branch: evening check-in with a mood tap, morning pipelines to London, a health and a mindset experiment delivered on the Home day card with Bee-anchored nudges and rewards, and a Chronos-2 baseline band on Home. The stage script and what each table should show is [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The earlier one-member partner study (`barbara-dry-run`, `/demo`) still works and is described there as the second act. The BARBARA marker brief is [`docs/warehouse/BARBARA-BRIEF.md`](docs/warehouse/BARBARA-BRIEF.md). The Spotify file under `experiments/concepts/` is display-only.
 
-**Baseline band.** [`warehouse/forecast`](warehouse/forecast) is a Cloud Run job in London that asks Chronos-2 to forecast the last 7 days of each daily measure from every day before, and writes `ordinary_effects.forecasts` with a load job. `pnpm forecast:run` starts it by hand; `pnpm demo:snapshot` attaches the bands; `/demo` draws them in grey under the actual line as "Baseline expectation, no experiment yet". Fourteen or more days of history is a full band, 5 to 13 is a lighter early estimate, fewer shows a message. The pandas logic is tested with `pytest warehouse/forecast` in CI without torch. The model is pinned by commit and baked into the image, so the job makes no network calls except to BigQuery.
+**Baseline band.** [`warehouse/forecast`](warehouse/forecast) is a Cloud Run job in London that asks Chronos-2 to forecast the last 7 days of each daily measure from every day before, and writes `ordinary_effects.forecasts` with a load job. The Warehouse workflow runs it after Dataform when `FORECAST_JOB_ENABLED` is `true`, runs the `forecast` assertions, then calls `/api/cron/baseline-snapshot` so Home draws the band from Neon. `pnpm forecast:run` starts the job by hand; `pnpm demo:snapshot` attaches the same bands to `/demo`. Fourteen or more days of history is a full band, 5 to 13 is a lighter early estimate, fewer shows a message. The pandas logic is tested with `pytest warehouse/forecast` in CI without torch. The model is pinned by commit and baked into the image, so the job makes no network calls except to BigQuery.
 
-`pnpm test:nudges` checks the rule validator, the randomised send or hold, the London-day caps, and that an exported nudge row has no message text.
+`pnpm test:nudges` checks the rule validator (including `domain` and `kind`), the randomised send or hold, the London-day caps, the recovery-rebound and mood-lift reward signals, and that an exported nudge row has no message text.
 
 The Python session contract is `python3 -m unittest test_log_session.py` from `skills/episodic-recall`.
 

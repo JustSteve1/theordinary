@@ -1,16 +1,16 @@
 # Nudges
 
-Nudges are short, specific, positive notes about a member's own pattern. A saved check-in, an experiment marked done, or the morning cron can make a rule eligible. Each eligible rule is sent with its `send_probability` (0.8 for the starter rules) or held. Both outcomes are stored. Held rows are never shown.
+Nudges are short, specific, positive notes about a member's own pattern. Each rule has a `domain` (`health` from WHOOP signals, `mindset` from check-in and Bee signals) and a `kind` (`reinforcement` for a behaviour to repeat, `reward` for a result that beat the member's own recent pattern). A saved check-in, a mood tap at wrap-up, an experiment marked done, or the morning cron can make a rule eligible. Each eligible rule is sent with its `send_probability` (0.8 for the starter rules) or held. Both outcomes are stored. Held rows are never shown.
 
-The Home card shows the single highest-priority active nudge. The inbox at `/app/nudges` lists sends from the last 30 days. Thanks dismisses a nudge. Helpful and Not for me dismiss it and store that answer.
+The Home day card shows today's experiment decisions and the single highest-priority active nudge, each tagged with its domain. The inbox at `/app/nudges` lists sends from the last 30 days. Thanks dismisses a nudge. Helpful and Not for me dismiss it and store that answer.
 
-Neon is the source of truth. BigQuery receives rule ids, the coin flip, and timestamps. It does not receive rendered text or message parameters.
+Neon is the source of truth. BigQuery receives rule ids, `kind`, `category`, `domain`, the coin flip, and timestamps. It does not receive rendered text or message parameters.
 
 ## Public interface
 
 Other code imports `@/src/platform/nudges` only.
 
-- `emitNudgeEvent({ type, userId, eventId })` after a check-in save or an experiment marked done. It logs and does not throw.
+- `emitNudgeEvent({ type, userId, eventId })` after a check-in save (`checkin_saved`), a mood tap (`mood_saved`), or an experiment marked done (`experiment_done`). It logs and does not throw.
 - `runScheduledNudges(now)` from the morning cron. `trigger_key` is the London date.
 - `activeNudges(userId, limit)` and `nudgeHistory(userId, days)` for the UI. The first view of a pending nudge marks it shown.
 - `recordNudgeInteraction(userId, nudgeId, action)` for shown, thanks, helpful, and not for me. The update is scoped to that member.
@@ -21,7 +21,7 @@ Other code imports `@/src/platform/nudges` only.
 
 ## Add a rule
 
-1. Add `nudges/rules/<id>.json` with a trigger (`checkin_saved`, `experiment_done`, or `daily_morning`), conditions (`all` / `any`, and `gte`, `lte`, `eq`, `in`, `between`), a message key, numeric `params`, `send_probability`, `cooldown_hours`, `priority`, and `expires_after_hours`.
+1. Add `nudges/rules/<id>.json` with a `domain`, a `kind`, a trigger (`checkin_saved`, `mood_saved`, `experiment_done`, or `daily_morning`), conditions (`all` / `any`, and `gte`, `lte`, `eq`, `in`, `between`), a message key, numeric `params`, `send_probability`, `cooldown_hours`, `priority`, and `expires_after_hours`.
 2. Add a `title` and `body` to `nudges/copy/en.json`. Placeholders are `{snake_case}` and must be the same set as `params`. Parameters are numbers.
 3. Import the JSON file in `src/platform/nudges/rules.ts` next to the other bundled imports.
 
@@ -29,7 +29,7 @@ A missing metric makes the condition false. The same member, rule, version, and 
 
 ## Add a signal or a channel
 
-A signal is a file under `src/platform/nudges/signals/` that exports a `SignalSource` and is added to `signalSources` in `signals/index.ts`. It may read scores, sessions, decision points, or `loadWhoop`. It must not read talk text, narratives, or Bee text.
+A signal is a file under `src/platform/nudges/signals/` that exports a `SignalSource` and is added to `signalSources` in `signals/index.ts`. It may read scores, sessions, the wrap-up mood, decision points, or `loadWhoop`. `signals/mood.ts` gives `mood_today`, `recent_moods`, and `mood_vs_recent`; `signals/whoop.ts` gives `whoop_recovery_today` and `whoop_recovery_vs_yesterday`. It must not read talk text, narratives, or Bee text.
 
 A channel is a file under `src/platform/nudges/channels/` registered in `channels/index.ts`. Email and push are not built. The in-app channel renders from the copy file at read time.
 
@@ -49,9 +49,9 @@ Delete these, then the app builds and the other tests pass:
 - `src/journey/nudges.tsx`
 - `app/app/nudges/`
 - `app/api/cron/nudges-morning/`
-- the `emitNudgeEvent` call in `src/features/check-in/actions.ts`
+- the `emitNudgeEvent` calls in `src/features/check-in/actions.ts` (check-in save and mood)
 - the `emitNudgeEvent` call in `src/features/experiments/actions.ts`
-- `<NudgeCard>` in `src/journey/home.tsx`
+- `<NudgeCard>` in `src/journey/home.tsx` (the experiment card keeps `src/features/nudges/day-card.tsx`, so move it first)
 - the Nudges link in `src/journey/dashboard.tsx`
 - `nudgeControls` in `src/journey/settings.tsx` and the nudges prop on `src/journey/settings-screen.tsx`
 - the Nudges panel in `src/features/settings/settings-controls.tsx`
