@@ -1,0 +1,89 @@
+config {
+  type: "table",
+  schema: "ordinary_effects",
+  tags: ["studies"],
+  description: "One row per member and BARBARA experiment. Y is the partner marker. Not a diagnosis."
+}
+
+with frame as (
+  select *
+  from ${ref("study_frame_long")}
+  where experiment_id like 'barbara-%'
+),
+ordinary as (
+  select
+    *,
+    max(date) over (partition by member_key, experiment_id, version) as last_date
+  from frame
+  where source = 'ordinary'
+),
+daily as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    environment,
+    measure_id,
+    avg(value_number) as mean_value,
+    avg(if(date >= date_sub(last_date, interval 6 day), value_number, null)) as last7_mean,
+    countif(value_number is not null) as filled_days,
+    count(*) as study_days
+  from ordinary
+  group by 1, 2, 3, 4, 5
+),
+wide as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    any_value(environment) as environment,
+    max(if(measure_id = 'recall.accuracy', mean_value, null)) as recall_accuracy_mean,
+    max(if(measure_id = 'recall.accuracy', last7_mean, null)) as recall_accuracy_last7,
+    max(if(measure_id = 'recall.accuracy', filled_days, null)) as recall_accuracy_days,
+    max(if(measure_id = 'recall.richness', mean_value, null)) as recall_richness_mean,
+    max(if(measure_id = 'recall.richness', last7_mean, null)) as recall_richness_last7,
+    max(if(measure_id = 'recall.false_alarm', mean_value, null)) as recall_false_alarm_mean,
+    max(if(measure_id = 'whoop.sleep_asleep_min', mean_value, null)) as sleep_asleep_min_mean,
+    max(if(measure_id = 'whoop.hrv_rmssd_ms', mean_value, null)) as hrv_rmssd_ms_mean,
+    max(study_days) as study_days
+  from daily
+  group by 1, 2, 3
+),
+marker as (
+  select
+    member_key,
+    experiment_id,
+    version,
+    max(if(measure_id = 'biomarker.ptau217_group', value_category, null)) as ptau217_group,
+    max(if(measure_id = 'reference.digital_battery' and timepoint_id = 'baseline', value_number, null)) as battery_baseline,
+    max(if(measure_id = 'reference.digital_battery' and timepoint_id = 'end', value_number, null)) as battery_end,
+    logical_or(is_synthetic) as partner_is_synthetic
+  from frame
+  where source = 'partner'
+  group by 1, 2, 3
+)
+select
+  w.member_key,
+  w.experiment_id,
+  w.version,
+  w.environment,
+  w.study_days,
+  w.recall_accuracy_mean,
+  w.recall_accuracy_last7,
+  w.recall_accuracy_days,
+  w.recall_richness_mean,
+  w.recall_richness_last7,
+  w.recall_false_alarm_mean,
+  w.sleep_asleep_min_mean,
+  w.hrv_rmssd_ms_mean,
+  m.ptau217_group,
+  m.ptau217_group = 'positive' as marker_ptau217_positive,
+  m.ptau217_group = 'positive' as marker_present,
+  cast(null as bool) as battery_below_cutoff,
+  m.battery_baseline,
+  m.battery_end,
+  m.partner_is_synthetic,
+  true as not_a_diagnosis,
+  true as not_causal
+from wide w
+left join marker m using (member_key, experiment_id, version)

@@ -160,7 +160,7 @@ pytest warehouse/forecast
 
 ## Hackathon MVP
 
-A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The Spotify file under `experiments/concepts/` is display-only and is never activated.
+A one-member demo of a measurement-partner study. Activate `barbara-dry-run` with a 30-day backdated window, import synthetic partner measures, rebuild the study frame, then snapshot onto `/demo`. The page never reads BigQuery. Rehearsal notes are in [`docs/warehouse/HACKATHON-DEMO.md`](docs/warehouse/HACKATHON-DEMO.md). The BARBARA marker brief is [`docs/warehouse/BARBARA-BRIEF.md`](docs/warehouse/BARBARA-BRIEF.md). The Spotify file under `experiments/concepts/` is display-only; Chronos is parked for that concept only.
 
 **Baseline band.** [`warehouse/forecast`](warehouse/forecast) is a Cloud Run job in London that asks Chronos-2 to forecast the last 7 days of each daily measure from every day before, and writes `ordinary_effects.forecasts` with a load job. `pnpm forecast:run` starts it by hand; `pnpm demo:snapshot` attaches the bands; `/demo` draws them in grey under the actual line as "Baseline expectation, no experiment yet". Fourteen or more days of history is a full band, 5 to 13 is a lighter early estimate, fewer shows a message. The pandas logic is tested with `pytest warehouse/forecast` in CI without torch. The model is pinned by commit and baked into the image, so the job makes no network calls except to BigQuery.
 

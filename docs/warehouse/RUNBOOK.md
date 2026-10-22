@@ -99,6 +99,8 @@ The baseline band comes from the `ordinary-forecast` Cloud Run job in `europe-we
 
 Rehearsal order and the stage script: [`HACKATHON-DEMO.md`](HACKATHON-DEMO.md).
 
+The BARBARA analysis brief is [`BARBARA-BRIEF.md`](BARBARA-BRIEF.md). Dataform tag `studies` also builds `barbara_member_features`, `barbara_timepoint_agreement`, `barbara_daily_pairs`, and `barbara_associations`. Y is `ptau217_group = 'positive'` until a composite exists. Chronos is parked for Spotify: [`SPOTIFY-CHRONOS.md`](SPOTIFY-CHRONOS.md).
+
 ## Reading results
 
 Saved queries are in [`results.sql`](results.sql).
@@ -119,7 +121,7 @@ Withdrawing health consent or deleting the account computes `member_key` first, 
 
 ## What is not built
 
-Email nudges, rewards, pooling across members beyond within-member centring, and Bee text features. Scoring is unchanged. TimesFM 3.0 and `AI.DETECT_ANOMALIES` are omitted because they are not confirmed in `europe-west2`. `ordinary_effects.counterfactual` records `unavailable_in_region` and does not query another region.
+Email nudges, rewards, pooling across members beyond within-member centring, and Bee text features. Scoring is unchanged. TimesFM 3.0 and `AI.DETECT_ANOMALIES` are omitted because they are not confirmed in `europe-west2`. Chronos is the intended Spotify forecast and is parked on the same London gate. `ordinary_effects.counterfactual` records `unavailable_in_region` and does not query another region.
 
 ## Bootstrap still needs a person
 

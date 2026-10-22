@@ -1,0 +1,10 @@
+config { type: "assertion", schema: "ordinary_effects", tags: ["studies"] }
+
+select experiment_id, version, pair_id
+from ${ref("barbara_associations")}
+where not_causal is not true
+union all
+select experiment_id, version, 'member_features'
+from ${ref("barbara_member_features")}
+where not_causal is not true
+  or not_a_diagnosis is not true
