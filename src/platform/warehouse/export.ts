@@ -86,7 +86,7 @@ export function beeActivityRow(input: {
 export async function exportWarehouse(days = 3) {
   if (!warehouseEnabled()) {
     console.info(JSON.stringify({ warehouse: "skipped", stream: "export" }));
-    return { skipped: true };
+    return { skipped: true, reason: "warehouse env incomplete" };
   }
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
   const members = await consentedMembers();

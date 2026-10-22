@@ -46,6 +46,37 @@ export async function decideToday(now = new Date()) {
   return created;
 }
 
+/**
+ * Same loop as decideToday, with the reason nothing happened when the day
+ * produced no decisions. Used by the morning cron so a quiet run is explained.
+ */
+export async function decideTodayReport(now = new Date()) {
+  await ready();
+  const active = await db()`select id, config from experiments where status = 'active'`;
+  const randomised = active.filter(
+    (row) => hasDecisionAssigner(row.config) && validateExperiment(row.config).ok,
+  );
+  if (!active.length) {
+    return { created: 0, skipped: true as const, reason: "no active experiments" };
+  }
+  if (!randomised.length) {
+    return {
+      created: 0,
+      skipped: true as const,
+      reason: "active experiments are monitoring only; nothing to randomise",
+    };
+  }
+  const created = await decideToday(now);
+  if (!created.length) {
+    return {
+      created: 0,
+      skipped: true as const,
+      reason: "no consented member is enrolled in a randomised experiment, or today's decision already exists",
+    };
+  }
+  return { created: created.length, skipped: false as const };
+}
+
 export async function decideOne(config: ExperimentConfig, userId: string, now: Date) {
   const decisionDate = dateKey(now.getTime());
   let whoopRecent = true;

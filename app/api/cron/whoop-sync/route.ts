@@ -1,4 +1,5 @@
 import { consentedWhoopMembers, syncMember } from "@/src/platform/integrations/whoop-sync";
+import { warehouseEnabled } from "@/src/platform/warehouse/client";
 import { requireCron } from "@/src/platform/warehouse/cron";
 import { memberKey } from "@/src/platform/warehouse/member-key";
 import { ensureTables } from "@/src/platform/warehouse/tables";
@@ -15,8 +16,19 @@ export async function GET(request: Request) {
   const days = Math.min(30, Math.max(1, Number.isFinite(requested) ? requested : 3));
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
+  if (!warehouseEnabled()) {
+    return Response.json({ days, skipped: true, reason: "warehouse env incomplete", results: [] });
+  }
   await ensureTables();
   const members = await consentedWhoopMembers();
+  if (!members.length) {
+    return Response.json({
+      days,
+      skipped: true,
+      reason: "no consented member has WHOOP connected",
+      results: [],
+    });
+  }
   const results = [];
   for (const userId of members) {
     try {

@@ -489,7 +489,7 @@ test("caps, cooldown, idempotency, holds, and a closed gate write the right rows
   assert.equal(called, false);
   assert.deepEqual(
     await runScheduledNudges(now, { store: closed, flag: false, salt, rules: [rule()], metrics: throwing }),
-    { ran: 0, written: 0 },
+    { ran: 0, written: 0, skipped: true, reason: "NUDGES_ENABLED is not true" },
   );
   closed.setEnabled("member-a", false);
   assert.equal(

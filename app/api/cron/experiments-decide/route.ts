@@ -1,4 +1,4 @@
-import { decideToday } from "@/src/platform/experiments/store";
+import { decideTodayReport } from "@/src/platform/experiments/store";
 import { requireCron } from "@/src/platform/warehouse/cron";
 
 export const runtime = "nodejs";
@@ -10,8 +10,7 @@ export async function GET(request: Request) {
     return denied;
   }
   try {
-    const created = await decideToday();
-    return Response.json({ created: created.length });
+    return Response.json(await decideTodayReport());
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "Decision run failed." },

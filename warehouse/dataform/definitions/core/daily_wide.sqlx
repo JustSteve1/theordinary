@@ -1,12 +1,13 @@
 config {
   type: "table",
   schema: "ordinary_core",
-  tags: ["spine"]
+  tags: ["spine"],
+  description: "One row per member per local date from member_days. A day with no WHOOP, Bee or check-in still appears, with nulls, so gaps are visible and forecasts have a full calendar."
 }
 
 select
-  member_key,
-  date,
+  m.member_key,
+  m.date,
   w.recovery_score,
   w.hrv_rmssd_ms,
   w.resting_hr_bpm,
@@ -42,6 +43,7 @@ select
     ifnull(b.bee_ids, []),
     if(r.checkin_id is null, [], [r.checkin_id])
   ) as source_ids
-from ${ref("whoop_daily")} w
-full outer join ${ref("bee_daily_activity")} b using (member_key, date)
-full outer join ${ref("recall_daily")} r using (member_key, date)
+from ${ref("member_days")} m
+left join ${ref("whoop_daily")} w using (member_key, date)
+left join ${ref("bee_daily_activity")} b using (member_key, date)
+left join ${ref("recall_daily")} r using (member_key, date)

@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  schema: "ordinary_effects",
+  tags: ["forecast"],
+  description: "The newest Chronos-2 run is less than 36 hours old. An empty table passes; a stale one fails."
+}
+
+select max(created_at) as newest
+from ${ref("forecasts")}
+having newest is not null
+   and newest < timestamp_sub(current_timestamp(), interval 36 hour)

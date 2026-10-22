@@ -58,13 +58,16 @@ export async function emitNudgeEvent(
 export async function runScheduledNudges(now = new Date(), override?: Partial<EngineDeps>) {
   const resolved = { ...defaultDeps(), ...override };
   if (!resolved.flag) {
-    return { ran: 0, written: 0 };
+    return { ran: 0, written: 0, skipped: true, reason: "NUDGES_ENABLED is not true" };
   }
   if (!resolved.salt) {
     console.error("nudge", "NUDGE_SALT must be at least 32 characters.");
-    return { ran: 0, written: 0 };
+    return { ran: 0, written: 0, skipped: true, reason: "NUDGE_SALT is missing or too short" };
   }
   const members = await resolved.store.consentedEnabledMembers();
+  if (!members.length) {
+    return { ran: 0, written: 0, skipped: true, reason: "no consented member has nudges on" };
+  }
   const triggerKey = dateKey(now.getTime());
   let written = 0;
   for (const userId of members) {
@@ -74,7 +77,7 @@ export async function runScheduledNudges(now = new Date(), override?: Partial<En
       console.error("nudge", error instanceof Error ? error.message : error);
     }
   }
-  return { ran: members.length, written };
+  return { ran: members.length, written, skipped: false };
 }
 
 export async function nudgesEnabledFor(userId: string, override?: ViewOverride) {
