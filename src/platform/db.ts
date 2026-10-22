@@ -209,6 +209,39 @@ create table if not exists decision_points (
   responded_at timestamptz,
   unique (experiment_id, version, user_id, decision_date)
 );
+
+create table if not exists nudges (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  rule_id text,
+  rule_version int,
+  kind text,
+  category text,
+  trigger text,
+  trigger_key text not null,
+  decision text not null,
+  probability double precision,
+  rand_u double precision,
+  message_key text,
+  params jsonb,
+  priority int,
+  created_at timestamptz default now(),
+  expires_at timestamptz,
+  status text not null,
+  shown_at timestamptz,
+  dismissed_at timestamptz,
+  helpful boolean,
+  channel text default 'in_app',
+  unique (user_id, rule_id, rule_version, trigger_key),
+  constraint nudges_decision check (decision in ('send', 'hold')),
+  constraint nudges_status check (status in ('held', 'pending', 'shown', 'dismissed', 'expired'))
+);
+
+create table if not exists nudge_settings (
+  user_id uuid primary key references members (id) on delete cascade,
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now()
+);
 `;
 
 function databaseUrl() {

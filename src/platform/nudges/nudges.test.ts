@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { readFileSync } from "node:fs";
+
 import {
   evaluateCondition,
   loadCopy,
@@ -9,6 +11,8 @@ import {
   type Condition,
   type CopyBook,
 } from "@/src/platform/nudges/rules";
+import { memoryStore, numericParams, type MemoryStore } from "@/src/platform/nudges/store";
+import type { NudgeDraft } from "@/src/platform/nudges/types";
 
 const copy: CopyBook = loadCopy();
 
@@ -130,4 +134,98 @@ test("the condition evaluator handles each op, combinator, and a missing metric"
     { any: [{ metric: "a", op: "eq", value: 1 }, { metric: "missing", op: "eq", value: 1 }] },
     false,
   );
+});
+
+function draft(patch: Partial<NudgeDraft> = {}): NudgeDraft {
+  const createdAt = patch.createdAt ?? new Date("2026-10-22T08:00:00.000Z");
+  return {
+    userId: "member-a",
+    ruleId: "checkin-streak",
+    ruleVersion: 1,
+    kind: "reinforcement",
+    category: "consistency",
+    trigger: "checkin_saved",
+    triggerKey: "event-1",
+    decision: "send",
+    probability: 0.8,
+    randU: 0.1,
+    messageKey: "streak",
+    params: { checkin_streak_days: 3 },
+    priority: 2,
+    createdAt,
+    expiresAt: new Date(createdAt.getTime() + 36 * 60 * 60 * 1000),
+    status: "pending",
+    channel: "in_app",
+    ...patch,
+  };
+}
+
+async function seed(store: MemoryStore, patch: Partial<NudgeDraft> = {}) {
+  await store.insert(draft(patch));
+  return store.rows[store.rows.length - 1];
+}
+
+test("the schema declares nudges and nudge settings", () => {
+  const schema = readFileSync("src/platform/db.ts", "utf8");
+  assert.match(schema, /create table if not exists nudges/);
+  assert.match(schema, /unique \(user_id, rule_id, rule_version, trigger_key\)/);
+  assert.match(schema, /create table if not exists nudge_settings/);
+  assert.match(schema, /enabled boolean not null default true/);
+});
+
+test("the store double inserts once, lists sends, and keeps held rows out", async () => {
+  const store = memoryStore();
+  const now = new Date("2026-10-22T09:00:00.000Z");
+  assert.equal(await store.insert(draft()), "inserted");
+  assert.equal(await store.insert(draft()), "duplicate");
+  assert.equal(store.rows.length, 1);
+  assert.deepEqual(
+    numericParams({ checkin_streak_days: 3, note: "no" as unknown as number }),
+    { checkin_streak_days: 3 },
+  );
+
+  await store.insert(
+    draft({
+      ruleId: "richness-up",
+      triggerKey: "event-2",
+      decision: "hold",
+      status: "held",
+      messageKey: "richness_up",
+      params: {},
+      priority: 3,
+    }),
+  );
+
+  const active = await store.listActive("member-a", now, 10);
+  assert.deepEqual(active.map((row) => row.ruleId), ["checkin-streak"]);
+  const history = await store.history("member-a", new Date("2026-10-01T00:00:00.000Z"));
+  assert.deepEqual(history.map((row) => row.ruleId), ["checkin-streak"]);
+  assert.equal(await store.readEnabled("member-a"), true);
+  await store.writeEnabled("member-a", false);
+  assert.equal(await store.readEnabled("member-a"), false);
+});
+
+test("shown is recorded once, dismiss keeps the member, and expiry drops pending rows", async () => {
+  const store = memoryStore();
+  const row = await seed(store);
+  const first = new Date("2026-10-22T09:00:00.000Z");
+  const second = new Date("2026-10-22T10:00:00.000Z");
+  assert.equal(await store.markShown("member-a", row.id, first), true);
+  assert.equal(await store.markShown("member-a", row.id, second), true);
+  assert.equal(row.shownAt?.toISOString(), first.toISOString());
+  assert.equal(await store.dismiss("member-b", row.id, true, second), false);
+  assert.equal(row.status, "shown");
+  assert.equal(await store.dismiss("member-a", row.id, true, second), true);
+  assert.equal(row.status, "dismissed");
+  assert.equal(row.helpful, true);
+
+  const pending = await seed(store, {
+    ruleId: "recovery-morning",
+    triggerKey: "2026-10-22",
+    trigger: "daily_morning",
+    expiresAt: new Date("2026-10-22T08:30:00.000Z"),
+  });
+  assert.equal(await store.expireOld("member-a", first), 1);
+  assert.equal(pending.status, "expired");
+  assert.equal((await store.listActive("member-a", first, 10)).length, 0);
 });
