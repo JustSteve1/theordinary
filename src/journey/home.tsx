@@ -1,3 +1,4 @@
+import { BaselineCard } from "@/src/features/baseline/card";
 import { finishTalk } from "@/src/features/check-in/actions";
 import { ExperimentCard } from "@/src/features/experiments/card";
 import { NudgeCard } from "@/src/features/nudges/card";
@@ -41,6 +42,7 @@ export async function HomeScreen({
         launches={homeLaunch}
         finishTalk={finishTalk}
       />
+      <BaselineCard userId={profile.id} />
     </div>
   );
 }

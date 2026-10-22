@@ -253,6 +253,17 @@ create table if not exists nudges (
 
 alter table nudges add column if not exists domain text;
 
+create table if not exists baseline_snapshots (
+  id uuid primary key,
+  user_id uuid not null references members (id) on delete cascade,
+  run_id text not null,
+  model_id text,
+  model_revision text,
+  created_at timestamptz not null default now(),
+  payload jsonb not null,
+  unique (user_id, run_id)
+);
+
 create table if not exists nudge_settings (
   user_id uuid primary key references members (id) on delete cascade,
   enabled boolean not null default true,

@@ -39,3 +39,21 @@ jobs:
           npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags studies --vars=gitSha=${{ github.sha }}
           npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags effects_test --vars=gitSha=${{ github.sha }}
           npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags effects --vars=gitSha=${{ github.sha }}
+      # The Chronos-2 job is a Cloud Run job in europe-west2 (warehouse/forecast/setup.sh).
+      # FORECAST_JOB_ENABLED=true is set as a repository variable once that job exists,
+      # so nightly runs stay green while it does not.
+      - uses: google-github-actions/setup-gcloud@v2
+        if: vars.FORECAST_JOB_ENABLED == 'true'
+      - name: Draw the Chronos-2 baseline
+        if: vars.FORECAST_JOB_ENABLED == 'true'
+        run: |
+          gcloud run jobs execute ordinary-forecast --project the-ordinary-512212 --region europe-west2 --wait
+          npx --yes @dataform/cli@3.1.0 run --project-dir warehouse/dataform --tags forecast --vars=gitSha=${{ github.sha }}
+      # Copies each member's newest forecast run into Neon so Home draws the band
+      # without reading BigQuery. Needs APP_URL (variable) and CRON_SECRET (secret).
+      - name: Snapshot the baseline for Home
+        if: vars.FORECAST_JOB_ENABLED == 'true' && vars.APP_URL != ''
+        run: |
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL }}/api/cron/baseline-snapshot"

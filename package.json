@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:scoring": "tsx --test src/platform/scoring/scoring.test.ts src/platform/integrations/bee-export.test.ts",
-    "test:warehouse": "tsx --test src/platform/warehouse/warehouse.test.ts src/platform/integrations/whoop-sync.test.ts src/platform/integrations/whoop-refresh.test.ts src/platform/experiments/*.test.ts src/features/demo/demo.test.ts",
+    "test:warehouse": "tsx --test src/platform/warehouse/warehouse.test.ts src/platform/integrations/whoop-sync.test.ts src/platform/integrations/whoop-refresh.test.ts src/platform/experiments/*.test.ts src/features/demo/demo.test.ts src/platform/baseline/baseline.test.ts",
     "test:nudges": "tsx --test src/platform/nudges/nudges.test.ts",
     "warehouse:ensure": "tsx scripts/warehouse-ensure.ts",
     "warehouse:status": "tsx scripts/warehouse-status.ts",
