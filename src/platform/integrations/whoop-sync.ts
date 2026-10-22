@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 import { db, ready } from "@/src/platform/db";
-import { accessTokenFor } from "@/src/platform/integrations/whoop";
+import { accessTokenFor, type WhoopTokenResult } from "@/src/platform/integrations/whoop";
 import { getConnection } from "@/src/platform/integrations/store";
 import { readSecrets } from "@/src/platform/integrations/secrets";
 import { loadRows } from "@/src/platform/warehouse/load";
@@ -111,6 +111,13 @@ export function syncAllowed(input: { consented: boolean; connected: boolean }) {
   return input.consented && input.connected;
 }
 
+export function whoopRefreshSyncError(result: Extract<WhoopTokenResult, { ok: false }>) {
+  if (result.reason === "reconnect") {
+    return "WHOOP needs to be connected again.";
+  }
+  return result.message;
+}
+
 export function parseWhoopWebhook(body: unknown) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return null;
@@ -217,17 +224,21 @@ export async function syncMember(
     return { cycles: 0, recoveries: 0, sleeps: 0, workouts: 0 };
   }
   const token = await accessTokenFor(connection);
-  if (!token) {
-    await writeSync({ stream: "whoop", scope: userId, error: "WHOOP needs to be connected again." });
+  if (!token.ok) {
+    await writeSync({
+      stream: "whoop",
+      scope: userId,
+      error: whoopRefreshSyncError(token),
+    });
     return { cycles: 0, recoveries: 0, sleeps: 0, workouts: 0 };
   }
   try {
     const key = memberKey(userId);
     const [cycles, recoveries, sleeps, workouts] = await Promise.all([
-      fetchCollection(token, "/v2/cycle", input, fetchImpl),
-      fetchCollection(token, "/v2/recovery", input, fetchImpl),
-      fetchCollection(token, "/v2/activity/sleep", input, fetchImpl),
-      fetchCollection(token, "/v2/activity/workout", input, fetchImpl),
+      fetchCollection(token.accessToken, "/v2/cycle", input, fetchImpl),
+      fetchCollection(token.accessToken, "/v2/recovery", input, fetchImpl),
+      fetchCollection(token.accessToken, "/v2/activity/sleep", input, fetchImpl),
+      fetchCollection(token.accessToken, "/v2/activity/workout", input, fetchImpl),
     ]);
     await loadRows("ordinary_raw", "whoop_cycle", cycles.map((item) => rowFrom(item, key, input.source, idOf(item, "id"))).filter((row) => row.record_id));
     await loadRows("ordinary_raw", "whoop_recovery", recoveries.map((item) => rowFrom(item, key, input.source, idOf(item, "cycle_id"))).filter((row) => row.record_id));
