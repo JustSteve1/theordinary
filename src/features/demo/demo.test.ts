@@ -112,6 +112,84 @@ test("forecast bands are built per measure with segment and model info", () => {
   );
 });
 
+function renderDemo(snapshot: DemoSnapshot) {
+  return renderToStaticMarkup(createElement(DemoView, { snapshot, score: null }));
+}
+
+function panelFor(html: string, label: string) {
+  const start = html.indexOf(`>${label}<`);
+  assert.ok(start >= 0, `${label} panel is rendered`);
+  const end = html.indexOf("</section>", start);
+  return html.slice(start, end);
+}
+
+test("full band renders solid fill, dashed median, window tick and label", () => {
+  const html = renderDemo(demoSnapshotFixture);
+  const panel = panelFor(html, "HRV");
+  assert.match(panel, /data-band="full"/);
+  assert.match(panel, /fill-opacity="0\.25"/);
+  assert.match(panel, /data-band-median=""[^>]*stroke-dasharray="4 3"/);
+  assert.match(panel, /data-window-start=""/);
+  assert.match(panel, /Baseline expectation, no experiment yet/);
+  assert.match(panel, /Forecast by Chronos-2 from 21 days before\. Not a measured effect\./);
+  assert.match(panel, /Actual inside the expected range on 7 of 7 days\./);
+  // Band first, actual line last so the blue line sits on top.
+  assert.ok(panel.indexOf('data-band="full"') < panel.indexOf('stroke="#0a84ff"'));
+  assert.ok(panel.indexOf("data-window-start") < panel.indexOf('stroke="#0a84ff"'));
+});
+
+test("limited band renders lighter dashed outline and early-estimate caption", () => {
+  const html = renderDemo(demoSnapshotFixture);
+  const panel = panelFor(html, "Recall accuracy");
+  assert.match(panel, /data-band="limited"/);
+  assert.match(panel, /fill-opacity="0\.12"/);
+  assert.match(panel, /data-band="limited"[^>]*stroke-dasharray="3 3"/);
+  assert.match(panel, /Baseline expectation, no experiment yet/);
+  assert.match(panel, /Early estimate: only 6 days of history, so the range is less certain\. Not a measured effect\./);
+  assert.match(panel, /Actual inside the range on 5 of 5 days\./);
+});
+
+test("insufficient band draws nothing and explains why", () => {
+  const html = renderDemo(demoSnapshotFixture);
+  const panel = panelFor(html, "Sleep minutes");
+  assert.doesNotMatch(panel, /data-band=/);
+  assert.doesNotMatch(panel, /data-window-start/);
+  assert.match(panel, /Not enough history yet for a baseline \(3 days\)\./);
+  assert.doesNotMatch(panel, /Baseline expectation/);
+});
+
+test("a chart without a band is unchanged", () => {
+  const html = renderDemo(demoSnapshotFixture);
+  const panel = panelFor(html, "False alarms");
+  assert.doesNotMatch(panel, /data-band/);
+  assert.doesNotMatch(panel, /Baseline expectation|Not enough history/);
+  const legacy = JSON.parse(JSON.stringify({ ...demoSnapshotFixture, forecast_bands: undefined })) as DemoSnapshot;
+  const legacyPanel = panelFor(renderDemo(legacy), "False alarms");
+  assert.equal(legacyPanel, panel);
+});
+
+test("legend and model line appear only with bands", () => {
+  const html = renderDemo(demoSnapshotFixture);
+  assert.match(html, /Expected range without any experiment/);
+  assert.match(html, /What actually happened/);
+  assert.match(html, /Model: amazon\/chronos-2 \(29ec376\), run /);
+});
+
+test("the y-scale includes the band so it never clips", () => {
+  const snapshot = JSON.parse(JSON.stringify(demoSnapshotFixture)) as DemoSnapshot;
+  const band = snapshot.forecast_bands!.find((row) => row.measure_id === "whoop.hrv_rmssd_ms")!;
+  band.points = band.points.map((point) => ({ ...point, q10: 10, q90: 90 }));
+  const panel = panelFor(renderDemo(snapshot), "HRV");
+  const d = /data-band="full" d="([^"]+)"/.exec(panel)?.[1] ?? "";
+  const ys = [...d.matchAll(/[ML][\d.]+,([\d.]+)/g)].map((match) => Number(match[1]));
+  assert.ok(ys.length > 0);
+  // Sparkline height is 72 with an 8px inset: q90 at the top edge, q10 at the bottom.
+  assert.ok(Math.min(...ys) >= 8 - 0.1 && Math.min(...ys) <= 8.1, `top ${Math.min(...ys)}`);
+  assert.ok(Math.max(...ys) >= 63.9 && Math.max(...ys) <= 64.1, `bottom ${Math.max(...ys)}`);
+  const line = /stroke="#0a84ff"/.test(panel);
+  assert.ok(line);
+});
+
 test("an older snapshot without bands still validates and renders", () => {
   const legacy = { ...demoSnapshotFixture };
   delete legacy.forecast_model;
