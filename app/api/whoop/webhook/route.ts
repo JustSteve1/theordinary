@@ -35,9 +35,9 @@ export async function POST(request: Request) {
   }
   const connection = await getConnection(userId, "whoop");
   const token = connection ? await accessTokenFor(connection) : null;
-  if (!token) {
+  if (!token?.ok) {
     return Response.json({ ignored: true });
   }
-  await loadRowsForWebhook(userId, event, token);
+  await loadRowsForWebhook(userId, event, token.accessToken);
   return Response.json({ ok: true });
 }

@@ -3,8 +3,8 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build",
   "crons": [
-    { "path": "/api/cron/whoop-sync", "schedule": "30 2 * * *" },
-    { "path": "/api/cron/warehouse-export", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/experiments-decide", "schedule": "0 5 * * *" }
+    { "path": "/api/cron/whoop-sync", "schedule": "45 6 * * *" },
+    { "path": "/api/cron/experiments-decide", "schedule": "15 7 * * *" },
+    { "path": "/api/cron/warehouse-export", "schedule": "15 8 * * *" }
   ]
 }

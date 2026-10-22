@@ -1,3 +1,5 @@
+import type postgres from "postgres";
+
 import { db, ready } from "@/src/platform/db";
 
 export type Connection = {
@@ -82,6 +84,80 @@ export async function deleteConnection(
     delete from connections
     where user_id = ${userId}
       and provider = ${provider}
+  `;
+}
+
+export type WhoopConnectionTx = {
+  save: (connection: Connection) => Promise<void>;
+  remove: () => Promise<void>;
+  reread: () => Promise<Connection | null>;
+};
+
+export async function withWhoopConnectionLock<T>(
+  userId: string,
+  run: (current: Connection | null, tx: WhoopConnectionTx) => Promise<T>,
+): Promise<T> {
+  await ready();
+  const result = await db().begin(async (tx) => {
+    const read = async () => {
+      const rows = (await tx`
+        select
+          user_id,
+          provider,
+          provider_user_id,
+          scopes,
+          access_token,
+          refresh_token,
+          expires_at
+        from connections
+        where user_id = ${userId}
+          and provider = 'whoop'
+        for update
+      `) as ConnectionRow[];
+      return rows[0] ? toConnection(rows[0]) : null;
+    };
+    const current = await read();
+    return run(current, {
+      save: (connection) => writeConnection(tx, connection),
+      remove: async () => {
+        await tx`
+          delete from connections
+          where user_id = ${userId}
+            and provider = 'whoop'
+        `;
+      },
+      reread: read,
+    });
+  });
+  return result as T;
+}
+
+async function writeConnection(tx: postgres.TransactionSql, connection: Connection) {
+  await tx`
+    insert into connections (
+      user_id,
+      provider,
+      provider_user_id,
+      scopes,
+      access_token,
+      refresh_token,
+      expires_at
+    )
+    values (
+      ${connection.userId},
+      ${connection.provider},
+      ${connection.providerUserId},
+      ${connection.scopes},
+      ${connection.accessToken},
+      ${connection.refreshToken},
+      ${connection.expiresAt}
+    )
+    on conflict (user_id, provider) do update set
+      provider_user_id = excluded.provider_user_id,
+      scopes = excluded.scopes,
+      access_token = excluded.access_token,
+      refresh_token = excluded.refresh_token,
+      expires_at = excluded.expires_at
   `;
 }
 
