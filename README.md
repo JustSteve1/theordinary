@@ -176,7 +176,7 @@ docs/hackathon/              Submission friction log
 
 Analysis lives in BigQuery in London (`europe-west2`, project `the-ordinary-512212`). Neon stays the source of truth. Pages do not read BigQuery. Speech, names, emails, and member UUIDs stay out of the warehouse. Members are `member_key`, an HMAC of the account id. The runbook is [`docs/warehouse/RUNBOOK.md`](docs/warehouse/RUNBOOK.md). The feature list is [`docs/warehouse/features.md`](docs/warehouse/features.md).
 
-Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, morning nudges are 07:30 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC (spine, studies, effects_test, effects, then the Chronos-2 job, the forecast assertions, and the baseline snapshot when `FORECAST_JOB_ENABLED` is on). Vercel calls the four cron routes with `Authorization: Bearer $CRON_SECRET`; the workflow calls `/api/cron/baseline-snapshot` with the same secret. Hobby and Pro both allow these once-a-day schedules, so they stay as four routes. A cron that does nothing answers `{ "skipped": true, "reason": "..." }` so a quiet morning is explained, not silent.
+Nightly schedules are UTC. Sunday 25 Oct 2026 is the morning these UTC minutes become the London minutes; until then London is one hour ahead. The morning report mail is 03:30 UTC, so Hobby's latest start is still by 05:30 London before and after the clock change. WHOOP sync is 06:45 UTC, experiment decisions are 07:15 UTC, morning nudges are 07:30 UTC, the app and Bee metadata export is 08:15 UTC, and Dataform runs at 09:40 and 11:40 UTC (spine, studies, effects_test, effects, then the Chronos-2 job, the forecast assertions, and the baseline snapshot when `FORECAST_JOB_ENABLED` is on). Vercel calls the five cron routes with `Authorization: Bearer $CRON_SECRET`; the workflow calls `/api/cron/baseline-snapshot` with the same secret. Hobby and Pro both allow these once-a-day schedules, so they stay as separate routes. A cron that does nothing answers `{ "skipped": true, "reason": "..." }` so a quiet morning is explained, not silent.
 
 Vercel production reaches BigQuery with Workload Identity Federation, not a service-account key. GitHub Actions uses the same pattern for the Dataform account. Local scripts impersonate with `WAREHOUSE_IMPERSONATE` and Application Default Credentials. A Kedro project at [`warehouse/kedro`](warehouse/kedro) is the local catalog: a plain run stays off BigQuery, and `--env=prod --pipelines=land_user1` is what writes raw rows before this is deployed.
 
@@ -205,6 +205,7 @@ New env vars: `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL
 | Settings | `/settings` |
 | WHOOP OAuth | `/api/whoop/connect`, `/callback`, `/disconnect` |
 | WHOOP webhook | `/api/whoop/webhook` |
+| Morning report mail | `/api/cron/morning-report` |
 | Nightly warehouse | `/api/cron/whoop-sync`, `/api/cron/warehouse-export`, `/api/cron/experiments-decide` |
 | Morning nudges | `/api/cron/nudges-morning` |
 | Baseline snapshot (called by the Warehouse workflow) | `/api/cron/baseline-snapshot` |
