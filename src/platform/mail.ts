@@ -24,6 +24,36 @@ function textFor(url: string) {
   return `${action}\n\n${url}\n\nThis link expires in 24 hours. If you didn't ask for this, you can ignore it.`;
 }
 
+export async function deliverPlainEmail(input: { to: string; subject: string; text: string }) {
+  const key = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  if (!key || !from) {
+    return { ok: false as const, reason: "unconfigured" as const };
+  }
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [input.to],
+        subject: input.subject,
+        text: input.text,
+      }),
+    });
+  } catch {
+    return { ok: false as const, reason: "network" as const };
+  }
+  if (!response.ok) {
+    return { ok: false as const, reason: "rejected" as const, status: response.status };
+  }
+  return { ok: true as const };
+}
+
 export async function deliverAccountEmail(email: string, url: string) {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
